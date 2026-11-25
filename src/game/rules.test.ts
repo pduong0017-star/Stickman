@@ -30,6 +30,12 @@ import {
   lerpAngle,
 } from './animation';
 import { computeStickmanSkeleton } from './StickmanRenderer';
+import {
+  ELEMENTAL_MARK_SPECS,
+  computeDetonationDamage,
+  computeOverdriveUltimateDamage,
+  computeSynergyCooldownRefund,
+} from './synergy';
 
 test('style rank scales monotonically from D to SSS', () => {
   assert.equal(computeStyleRank(0), 'D');
@@ -250,4 +256,35 @@ test('every fighter has a unique Ultimate cutscene style, Awakened visual motif,
   assert.equal(motifs.size, 4, 'All 4 fighters have unique Awakened visual transformations');
   assert.equal(upgradedSpecials.size, 4, 'All 4 fighters have unique Awakened [U] skill names');
   assert.equal(openers.size, 4, 'All 4 fighters open their basic combo with a distinct signature strike');
+});
+
+test('elemental mark detonations, Overdrive Ultimates, and cooldown refunds scale cleanly across all fighters', () => {
+  const callouts = new Set<string>();
+  const linkArts = new Set<string>();
+
+  for (const id of CHARACTER_ORDER) {
+    const spec = ELEMENTAL_MARK_SPECS[id];
+    callouts.add(spec.detonateCallout);
+    linkArts.add(spec.linkArtName);
+
+    const d1 = computeDetonationDamage(id, 1, false, 1);
+    const d2 = computeDetonationDamage(id, 2, false, 1);
+    const d3 = computeDetonationDamage(id, 3, false, 1);
+    const d3Awakened = computeDetonationDamage(id, 3, true, 1);
+    assert.ok(d1 < d2 && d2 < d3 && d3 < d3Awakened, `${id} detonation scales monotonically with stacks & awakening`);
+
+    const refund = computeSynergyCooldownRefund(id, 2);
+    assert.ok(refund.specialRefund > 0 && refund.dashRefund > 0 && refund.rageBonus > 0);
+  }
+
+  assert.equal(callouts.size, 4, 'Every fighter has a distinct elemental detonation callout');
+  assert.equal(linkArts.size, 4, 'Every fighter has a distinct [U]->[J] Skill-Link Art');
+  assert.ok(computeSynergyCooldownRefund('kagura', 1).healAmount > 0, 'Kagura detonation heals HP');
+
+  const baseUlt = computeOverdriveUltimateDamage(200, false, 0);
+  const markedUlt = computeOverdriveUltimateDamage(200, false, 3);
+  const overdriveUlt = computeOverdriveUltimateDamage(200, true, 3);
+  assert.equal(baseUlt, 200);
+  assert.ok(markedUlt > baseUlt, 'Consuming elemental marks boosts Ultimate Boss damage');
+  assert.ok(overdriveUlt > markedUlt, 'Awakened Overdrive Ultimate deals massive bonus Boss damage');
 });

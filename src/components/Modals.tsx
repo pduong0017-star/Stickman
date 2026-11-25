@@ -111,9 +111,12 @@ export const PauseModal: React.FC<PauseModalProps> = ({
             I · {skills.ultimateName} ({skills.ultimateKanji})
           </span>
         </div>
-        <div className="flex justify-between gap-2 py-1">
+        <div className="flex justify-between gap-2 py-1 border-b border-slate-800/80">
           <span className="text-slate-400">{skills.awakenDesc}</span>
           <span className="font-mono-num text-amber-300 text-right">O · {skills.awakenName}</span>
+        </div>
+        <div className="pt-1 text-amber-200/95 font-medium">
+          ⚡ {skills.synergyHint}
         </div>
       </div>
 

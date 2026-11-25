@@ -11,6 +11,7 @@ export interface CharacterSkillMeta {
   specialName: string;
   specialActiveName: string;
   specialDesc: string;
+  synergyHint: string;
   ultimateName: string;
   ultimateFullName: string;
   ultimateKanji: string;
@@ -96,6 +97,8 @@ export interface SkillCooldowns {
   cryo: number;
   cryoMax: number;
   cryoActive: boolean;
+  skillLinkActive: boolean;
+  skillLinkLabel: string;
   ultimateReady: boolean;
   awakenReady: boolean;
   awakened: boolean;

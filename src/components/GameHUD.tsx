@@ -389,10 +389,20 @@ export const GameHUD: React.FC<GameHUDProps> = ({
           <div className="flex items-center gap-2 sm:gap-3">
             <SkillSlot
               keyLabel="J"
-              name={hud.characterSkills.basicName}
+              name={
+                hud.cooldowns.skillLinkActive
+                  ? hud.cooldowns.skillLinkLabel
+                  : hud.characterSkills.basicName
+              }
               ready={true}
-              active={hud.awakened}
-              accent={hud.awakened ? '#ef4444' : hud.characterAccent}
+              active={hud.cooldowns.skillLinkActive || hud.awakened}
+              accent={
+                hud.cooldowns.skillLinkActive
+                  ? '#facc15'
+                  : hud.awakened
+                    ? '#ef4444'
+                    : hud.characterAccent
+              }
               cooldownText=""
               icon={
                 <path d="M5 19l4-1 10-10-3-3L6 15l-1 4zM14 6l4 4" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />

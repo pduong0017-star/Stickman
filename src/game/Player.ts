@@ -35,6 +35,7 @@ import {
   getComboMoveForCharacter,
 } from './animation';
 import { IceWall, MagmaPillar, PlasticChair, Projectile } from './Entities';
+import { getElementalMarkSpec } from './synergy';
 
 export interface ActiveMeleeHitbox {
   id: number;
@@ -47,7 +48,15 @@ export interface ActiveMeleeHitbox {
   knockY: number;
   heavy: boolean;
   unblockable: boolean;
+  applyMarkStacks?: number;
+  detonateMark?: boolean;
+  isLinkArt?: boolean;
   hitIds: Set<number>;
+}
+
+export interface SkillLinkWarpResult {
+  warpedToX?: number;
+  warpedFacing?: 1 | -1;
 }
 
 export class Player {
@@ -115,11 +124,16 @@ export class Player {
   public parryFlashTimer = 0;
   public parryCounterWindow = 0;
 
-  // Signature Skill [U]
+  // Signature Skill [U] & Skill-to-Skill Link Synergy
   public cryoCooldown = 0;
   public cryoCooldownMax = 3.2;
   public cryoCastTimer = 0;
   public cryoPunchTimer = 0;
+  public skillLinkTimer = 0;
+  public kaguraAirDivePending = false;
+  private activeAttackIsLinkArt = false;
+  private activeAttackDetonates = false;
+  private activeAttackMarkStacks = 0;
 
   // Scarf, Smooth Blended Skeleton & VFX
   public scarf: ScarfNode[] = [];
@@ -192,6 +206,11 @@ export class Player {
     this.cryoCooldown = 0;
     this.cryoCastTimer = 0;
     this.cryoPunchTimer = 0;
+    this.skillLinkTimer = 0;
+    this.kaguraAirDivePending = false;
+    this.activeAttackIsLinkArt = false;
+    this.activeAttackDetonates = false;
+    this.activeAttackMarkStacks = 0;
     this.afterimages = [];
     this.slashTrails = [];
     this.blendedJoints = null;
@@ -199,7 +218,8 @@ export class Player {
   }
 
   public notifyPerfectParry(): void {
-    this.parryCounterWindow = 0.65;
+    this.parryCounterWindow = 0.72;
+    this.skillLinkTimer = Math.max(this.skillLinkTimer, 0.9);
   }
 
   public standUpFromChair(chair: PlasticChair | null, audio: AudioEngine, particles: ParticleSystem): void {
@@ -247,19 +267,25 @@ export class Player {
     this.awakened = true;
     this.awakenTimer = this.awakenDuration;
     this.awakening = 0;
-    this.awakenPoseTimer = 0.62;
+    this.awakenPoseTimer = 0.56;
     this.invulnTimer = Math.max(this.invulnTimer, 0.95);
     this.hp = Math.min(this.maxHp, this.hp + 35);
+    // Awakening-Cancel Flow: instantly refresh [U] Skill & [L] Dash + open Skill Link window!
+    this.cryoCooldown = 0;
+    this.dashCooldown = 0;
+    this.skillLinkTimer = 1.25;
     this.poseTime = 0;
     this.vx = 0;
 
     const profile = getAwakenedVisualProfile(this.character.id);
     const waveCol = this.character.awakeningWaveColor;
     audio.playAwaken();
-    camera.pulseZoom(1.24, 0.58);
-    camera.addShake(0.68, 0, -1);
-    particles.emitShockwave(this.x, this.y - 52, waveCol, 195, 0.44);
-    particles.emitShockwave(this.x, this.y - 52, '#ffffff', 130, 0.32);
+    camera.pulseZoom(1.26, 0.58);
+    camera.addShake(0.72, 0, -1);
+    particles.emitShockwave(this.x, this.y - 52, waveCol, 210, 0.44);
+    particles.emitShockwave(this.x, this.y - 52, '#ffffff', 140, 0.32);
+    particles.emitSlashBeam(this.x, this.y - 56, -0.35, 320, waveCol, 14);
+    particles.emitSlashBeam(this.x, this.y - 56, 0.35, 320, '#ffffff', 10);
     particles.emitEmbers(this.x, this.y - 55, 36, waveCol);
     particles.emitSparks(this.x, this.y - 60, 26, '#ffffff', 660);
     particles.emitGroundCrack(this.x, 82, waveCol);
@@ -351,6 +377,9 @@ export class Player {
     onRequestUltimate: () => void;
     onRequestAwaken: () => void;
     onThunderBlinkHit: (fromX: number, toX: number, y: number, dir: 1 | -1, damage: number) => void;
+    onCryoSummonChill: (centerX: number, radius: number) => void;
+    onSkillLinkWarp: (kind: CharacterId) => SkillLinkWarpResult | null;
+    onDetonateAllMarks: (kind: CharacterId, originX: number, originY: number, maxRange: number) => number;
   }): void {
     const { dt, input, audio, particles, camera, chair, iceWalls, magmaPillars, projectiles, trainingMode } = params;
 
@@ -367,6 +396,7 @@ export class Player {
     this.cryoCooldown = Math.max(0, this.cryoCooldown - dt);
     this.cryoCastTimer = Math.max(0, this.cryoCastTimer - dt);
     this.cryoPunchTimer = Math.max(0, this.cryoPunchTimer - dt);
+    this.skillLinkTimer = Math.max(0, this.skillLinkTimer - dt);
     this.chairKickTimer = Math.max(0, this.chairKickTimer - dt);
     this.awakenPoseTimer = Math.max(0, this.awakenPoseTimer - dt);
     this.airFlipTimer = Math.max(0, this.airFlipTimer - dt);
@@ -478,7 +508,7 @@ export class Player {
       audio.playSlash(0, false);
     }
 
-    // Character Signature Skill [U]
+    // Character Signature Skill [U] (can cancel any basic attack cleanly for fluid chaining!)
     if (this.hurtTimer <= 0 && this.awakenPoseTimer <= 0 && input.consumeBuffered('cryo')) {
       this.triggerSignatureSkill({
         audio,
@@ -488,65 +518,104 @@ export class Player {
         magmaPillars,
         projectiles,
         onThunderBlinkHit: params.onThunderBlinkHit,
+        onCryoSummonChill: params.onCryoSummonChill,
       });
     }
 
     // Dash [Shift / L]
     if (
-      input.consumeBuffered('dash') &&
       this.dashCooldown <= 0 &&
       this.hurtTimer <= 0 &&
-      this.awakenPoseTimer <= 0
+      this.awakenPoseTimer <= 0 &&
+      input.consumeBuffered('dash')
     ) {
-      const moveDir = (input.isHeld('right') ? 1 : 0) - (input.isHeld('left') ? 1 : 0);
-      if (moveDir !== 0) this.facing = moveDir > 0 ? 1 : -1;
-      this.dashTimer = 0.16;
-      this.dashGraceTimer = 0.28;
-      this.dashCooldown = this.dashCooldownMax;
-      this.invulnTimer = Math.max(this.invulnTimer, 0.24);
-      const baseDashSpeed = this.character.moveSpeed * 2.15;
-      this.vx = this.facing * (this.awakened ? baseDashSpeed * 1.15 : baseDashSpeed);
-      this.vy = 0;
-      this.attackTimer = 0;
-      this.currentMove = null;
-      this.activeHitbox = null;
-      this.danceTimer = 0;
-      this.poseTime = 0;
-      this.scaleX = 1.24;
-      this.scaleY = 0.84;
-      audio.playDash();
-      particles.emitShockwave(
-        this.x,
-        this.y - 44,
-        this.awakened ? this.character.awakeningWaveColor : this.character.accentColor,
-        58,
-        0.2
-      );
-      // Awakened Dash Perks: Raijin leaves shocking thunder arc; Zero flings rear shadow kunai!
-      if (this.awakened && this.character.id === 'raijin') {
-        const dashEnd = clamp(this.x + this.facing * 175, 48, ARENA_WIDTH - 48);
-        particles.emitLightning(this.x + this.facing * 65, this.y - 46, '#fef08a', 60);
-        params.onThunderBlinkHit(this.x, dashEnd, this.y - 46, this.facing, 26);
-      } else if (this.awakened && this.character.id === 'zero') {
-        projectiles.push(
-          new Projectile({
-            x: this.x - this.facing * 14,
-            y: this.y - 52,
-            vx: this.facing * 1120,
-            vy: 0,
-            radius: 18,
-            damage: 24,
-            kind: 'kunai',
-            fromPlayer: true,
-            color: '#34d399',
-            maxLife: 0.7,
-          })
+      // Zero [U] → [L] Shadow-Warp Synergy: instantly blinks behind the marked target!
+      let shadowWarped = false;
+      if (this.character.id === 'zero' && this.skillLinkTimer > 0) {
+        const warp = params.onSkillLinkWarp('zero');
+        if (warp && warp.warpedToX !== undefined) {
+          const oldX = this.x;
+          const oldY = this.y - 52;
+          this.x = warp.warpedToX;
+          this.y = Math.min(this.y, GROUND_Y);
+          this.facing = warp.warpedFacing ?? this.facing;
+          this.dashGraceTimer = 0.45;
+          this.invulnTimer = Math.max(this.invulnTimer, 0.34);
+          this.vx = this.facing * 180;
+          this.vy = 0;
+          particles.emitChainArc(oldX, oldY, this.x, this.y - 52, '#34d399', 6);
+          particles.emitShockwave(this.x, this.y - 52, '#34d399', 88, 0.24);
+          particles.emitText(this.x, this.y - 108, 'ẢNH BỘ!', '#6ee7b7', 22);
+          audio.playDash();
+          shadowWarped = true;
+        }
+      }
+
+      if (!shadowWarped) {
+        const moveDir = (input.isHeld('right') ? 1 : 0) - (input.isHeld('left') ? 1 : 0);
+        if (moveDir !== 0) this.facing = moveDir > 0 ? 1 : -1;
+        this.dashTimer = 0.16;
+        this.dashGraceTimer = 0.3;
+        this.dashCooldown = this.dashCooldownMax;
+        this.invulnTimer = Math.max(this.invulnTimer, 0.24);
+        const baseDashSpeed = this.character.moveSpeed * 2.15;
+        this.vx = this.facing * (this.awakened ? baseDashSpeed * 1.15 : baseDashSpeed);
+        this.vy = 0;
+        this.attackTimer = 0;
+        this.currentMove = null;
+        this.activeHitbox = null;
+        this.danceTimer = 0;
+        this.poseTime = 0;
+        this.scaleX = 1.24;
+        this.scaleY = 0.84;
+        audio.playDash();
+        particles.emitShockwave(
+          this.x,
+          this.y - 44,
+          this.awakened ? this.character.awakeningWaveColor : this.character.accentColor,
+          58,
+          0.2
         );
+        // Kuro Dash-Through Ice Wall Synergy: dashing through standing Ice Wall OVERCHARGES & launches it!
+        for (const wall of iceWalls) {
+          if (
+            wall.active &&
+            !wall.launched &&
+            Math.abs(wall.x - this.x) < 165 &&
+            Math.sign(wall.x - this.x || this.facing) === this.facing
+          ) {
+            wall.launch(this.facing, particles, true);
+            this.skillLinkTimer = Math.max(this.skillLinkTimer, 1.0);
+            audio.playCryoShatter();
+            particles.emitText(wall.x, wall.y - 118, 'BĂNG HUYẾT XUNG KÍCH!', '#fca5a5', 22);
+            camera.addShake(0.45, this.facing, 0);
+          }
+        }
+        // Awakened Dash Perks: Raijin leaves shocking thunder arc; Zero flings shadow kunai!
+        if (this.awakened && this.character.id === 'raijin') {
+          const dashEnd = clamp(this.x + this.facing * 175, 48, ARENA_WIDTH - 48);
+          particles.emitChainArc(this.x, this.y - 48, dashEnd, this.y - 48, '#fef08a', 5);
+          params.onThunderBlinkHit(this.x, dashEnd, this.y - 46, this.facing, 26);
+        } else if (this.awakened && this.character.id === 'zero') {
+          projectiles.push(
+            new Projectile({
+              x: this.x - this.facing * 14,
+              y: this.y - 52,
+              vx: this.facing * 1120,
+              vy: 0,
+              radius: 18,
+              damage: 24,
+              kind: 'kunai',
+              fromPlayer: true,
+              color: '#34d399',
+              maxLife: 0.7,
+            })
+          );
+        }
       }
     }
 
-    // Attack [J] — Fluid 6-Hit Ground Combo, 3-Hit Air Combo + Slam, Iaido Dash-Slash, Parry Counter
-    // Smooth combo cancel window + hold-to-combo support for buttery mobile & keyboard combat!
+    // Attack [J] — Fluid 6-Hit Ground Combo, 3-Hit Air Combo + Slam, Skill-Link Arts, Dash-Slash, Parry Counter
     const moveAxis = (input.isHeld('right') ? 1 : 0) - (input.isHeld('left') ? 1 : 0);
     const attackElapsed = this.attackDuration - this.attackTimer;
     const cancelThreshold = this.currentMove
@@ -554,7 +623,7 @@ export class Player {
       : 0;
     const canChainNow =
       this.attackTimer <= 0 || (this.attackDuration > 0 && attackElapsed >= cancelThreshold);
-    const canDashCancelIntoSlash = this.dashTimer > 0 && this.dashTimer < 0.11;
+    const canDashCancelIntoSlash = this.dashTimer > 0 && this.dashTimer < 0.12;
     const attackRequested =
       input.consumeBuffered('attack') ||
       (input.isHeld('attack') &&
@@ -570,7 +639,17 @@ export class Player {
       if (moveAxis !== 0) {
         this.facing = moveAxis > 0 ? 1 : -1;
       }
-      this.startAttack(audio, particles, camera, iceWalls, magmaPillars, projectiles, params.onThunderBlinkHit);
+      this.startAttack(
+        audio,
+        particles,
+        camera,
+        iceWalls,
+        magmaPillars,
+        projectiles,
+        params.onThunderBlinkHit,
+        params.onSkillLinkWarp,
+        params.onDetonateAllMarks
+      );
     }
 
     // Horizontal Movement
@@ -713,13 +792,32 @@ export class Player {
       }
     }
 
-    // Ground landing (plus explosive Meteor Air Slam shockwave & Awakened Kagura Supernova!)
+    // Ground landing (plus explosive Meteor Air Slam & Kagura Air-Dive Magma Eruption!)
     if (this.y >= GROUND_Y) {
-      if (!this.onGround && this.vy > 220) {
-        this.scaleX = this.airSlamPendingImpact ? 1.34 : 1.22;
-        this.scaleY = this.airSlamPendingImpact ? 0.68 : 0.78;
-        particles.emitSmoke(this.x, GROUND_Y, this.airSlamPendingImpact ? 10 : 4, '#64748b', -30, 26);
-        if (this.airSlamPendingImpact) {
+      if (!this.onGround && (this.vy > 220 || this.kaguraAirDivePending)) {
+        this.scaleX = this.airSlamPendingImpact || this.kaguraAirDivePending ? 1.36 : 1.22;
+        this.scaleY = this.airSlamPendingImpact || this.kaguraAirDivePending ? 0.66 : 0.78;
+        particles.emitSmoke(
+          this.x,
+          GROUND_Y,
+          this.airSlamPendingImpact || this.kaguraAirDivePending ? 10 : 4,
+          '#64748b',
+          -30,
+          26
+        );
+        if (this.kaguraAirDivePending) {
+          this.kaguraAirDivePending = false;
+          const baseDmg = Math.round((this.awakened ? 78 : 54) * this.character.damageMultiplier);
+          for (const ox of [-115, 0, 115]) {
+            const px = clamp(this.x + ox, 64, ARENA_WIDTH - 64);
+            magmaPillars.push(new MagmaPillar(px, ox < 0 ? -1 : 1, 0.05, baseDmg));
+          }
+          particles.emitGroundCrack(this.x, 78, '#f97316');
+          particles.emitShockwave(this.x, GROUND_Y - 12, '#fde047', 145, 0.32);
+          particles.emitText(this.x, this.y - 112, 'HỎA PHƯỢNG GIÁNG THẾ!', '#fde047', 24);
+          camera.addShake(0.62, 0, 1);
+          audio.playCryoShatter();
+        } else if (this.airSlamPendingImpact) {
           this.airSlamPendingImpact = false;
           particles.emitGroundCrack(
             this.x + this.facing * 26,
@@ -733,12 +831,14 @@ export class Player {
             115,
             0.28
           );
+          // Air Slam detonates marks right underneath!
+          params.onDetonateAllMarks(this.character.id, this.x, GROUND_Y - 45, 220);
           // Awakened Kagura Air Slam triggers flanking twin magma pillars!
           if (this.awakened && this.character.id === 'kagura') {
             magmaPillars.push(new MagmaPillar(clamp(this.x - 86, 64, ARENA_WIDTH - 64), -1, 0.06, 52));
             magmaPillars.push(new MagmaPillar(clamp(this.x + 86, 64, ARENA_WIDTH - 64), 1, 0.06, 52));
           }
-          camera.addShake(0.42, 0, 1);
+          camera.addShake(0.45, 0, 1);
           audio.playCryoShatter();
         }
       }
@@ -816,9 +916,15 @@ export class Player {
     magmaPillars: MagmaPillar[];
     projectiles: Projectile[];
     onThunderBlinkHit: (fromX: number, toX: number, y: number, dir: 1 | -1, damage: number) => void;
+    onCryoSummonChill: (centerX: number, radius: number) => void;
   }): void {
-    const { audio, particles, camera, iceWalls, magmaPillars, projectiles, onThunderBlinkHit } = params;
+    const { audio, particles, camera, iceWalls, magmaPillars, projectiles, onThunderBlinkHit, onCryoSummonChill } = params;
     const kind = this.character.specialKind;
+
+    // Smooth skill-cancel out of any basic attack!
+    this.attackTimer = 0;
+    this.currentMove = null;
+    this.activeHitbox = null;
 
     if (kind === 'cryo_wall') {
       const standingWall = iceWalls.find((w) => w.active && !w.launched);
@@ -826,8 +932,9 @@ export class Player {
         const dir: 1 | -1 = standingWall.x >= this.x ? 1 : -1;
         this.facing = dir;
         this.cryoPunchTimer = 0.25;
+        this.skillLinkTimer = 1.05;
         this.poseTime = 0;
-        standingWall.launch(dir, particles);
+        standingWall.launch(dir, particles, this.awakened);
         audio.playCryoShatter();
         camera.addShake(0.42, dir, 0);
         camera.pulseZoom(1.08, 0.2);
@@ -836,10 +943,12 @@ export class Player {
         iceWalls.push(new IceWall(spawnX, this.facing));
         this.cryoCooldown = this.cryoCooldownMax;
         this.cryoCastTimer = 0.22;
+        this.skillLinkTimer = 1.05;
         this.poseTime = 0;
         audio.playCryoSummon();
         particles.emitIceShards(spawnX, GROUND_Y - 22, 12, this.facing);
         particles.emitGroundCrack(spawnX, 46, this.awakened ? '#ef4444' : '#38bdf8');
+        onCryoSummonChill(spawnX, 175);
         camera.addShake(0.24, 0, -1);
 
         // Awakened Kuro Upgrade (BĂNG HUYẾT): also launches twin piercing Blood-Ice Waves!
@@ -869,15 +978,19 @@ export class Player {
     if (this.cryoCooldown > 0) return;
 
     if (kind === 'thunder_blink') {
-      // Raijin: Instant Lightning Blink Piercing Thrust! (Awakened: LÔI ĐÌNH calls 3 Sky Thunderbolts!)
+      // Raijin: Instant Lightning Blink Piercing Thrust! (opens Skill Link → [J] LÔI LIÊN THƯƠNG!)
       const startX = this.x;
-      const dist = this.awakened ? 390 : 300;
+      const dist = this.awakened ? 390 : 305;
       const endX = clamp(startX + this.facing * dist, 56, ARENA_WIDTH - 56);
       this.cryoCooldown = this.cryoCooldownMax;
-      this.cryoPunchTimer = 0.24;
+      this.cryoPunchTimer = 0.22;
+      this.skillLinkTimer = 1.1;
       this.invulnTimer = Math.max(this.invulnTimer, 0.36);
       this.poseTime = 0;
       this.danceTimer = 0;
+
+      particles.emitChainArc(startX, this.y - 52, endX, this.y - 52, '#fef08a', 6.5);
+      particles.emitChainArc(startX, this.y - 38, endX, this.y - 64, '#22d3ee', 4.5);
 
       if (this.lastJoints) {
         const steps = this.awakened ? 7 : 5;
@@ -919,13 +1032,24 @@ export class Player {
       const dmg = Math.round((this.awakened ? 92 : 54) * this.character.damageMultiplier);
       onThunderBlinkHit(startX, endX, this.y - 48, this.facing, dmg);
     } else if (kind === 'magma_eruption') {
-      // Kagura: 3 Advancing Magma Pillars (Awakened: HỎA NGỤC spawns 5 Pillars sweeping BOTH sides!)
+      // Kagura: Air-Dive Phoenix Plunge if mid-air, or 3/5 Advancing Magma Pillars on ground!
       this.cryoCooldown = this.cryoCooldownMax;
-      this.cryoPunchTimer = 0.28;
+      this.cryoPunchTimer = 0.24;
+      this.skillLinkTimer = 1.1;
       this.poseTime = 0;
       this.danceTimer = 0;
-      this.vx = -this.facing * 90;
 
+      if (!this.onGround && this.y < GROUND_Y - 40) {
+        this.kaguraAirDivePending = true;
+        this.vx = this.facing * 240;
+        this.vy = 860;
+        particles.emitEmbers(this.x, this.y - 48, 22, '#fde047');
+        particles.emitShockwave(this.x, this.y - 48, '#f97316', 90, 0.24);
+        audio.playDash();
+        return;
+      }
+
+      this.vx = -this.facing * 80;
       const baseDmg = Math.round((this.awakened ? 74 : 48) * this.character.damageMultiplier);
       for (let i = 0; i < 3; i++) {
         const px = clamp(this.x + this.facing * (110 + i * 116), 64, ARENA_WIDTH - 64);
@@ -943,10 +1067,11 @@ export class Player {
       particles.emitText(this.x, this.y - 106, this.awakened ? 'HỎA NGỤC LIÊN HOÀN!' : 'HỎA BẠO CHẤN!', '#fde047', 24);
       camera.addShake(this.awakened ? 0.58 : 0.45, 0, 1);
     } else if (kind === 'phantom_barrage') {
-      // Zero: Backstep leap + 5 Kunai Fan (Awakened: THẬP TỰ ĐAO flings 7 Kunai + Forward Void Crescent!)
+      // Zero: Backstep leap + Kunai Fan (opens Skill Link → [J]/[L] ẢNH BỘ Shadow-Warp behind marked enemy!)
       this.cryoCooldown = this.cryoCooldownMax;
-      this.cryoCastTimer = 0.24;
-      this.invulnTimer = Math.max(this.invulnTimer, 0.24);
+      this.cryoCastTimer = 0.22;
+      this.skillLinkTimer = 1.25;
+      this.invulnTimer = Math.max(this.invulnTimer, 0.26);
       this.poseTime = 0;
       this.danceTimer = 0;
       this.vx = -this.facing * 260;
@@ -956,7 +1081,7 @@ export class Player {
       const angles = this.awakened
         ? [-0.36, -0.24, -0.12, 0, 0.12, 0.24, 0.36]
         : [-0.26, -0.13, 0, 0.13, 0.26];
-      const speed = this.awakened ? 1200 : 980;
+      const speed = this.awakened ? 1240 : 1040;
       const dmg = Math.round((this.awakened ? 36 : 24) * this.character.damageMultiplier);
       for (const a of angles) {
         projectiles.push(
@@ -1005,31 +1130,126 @@ export class Player {
     iceWalls: IceWall[],
     magmaPillars: MagmaPillar[],
     projectiles: Projectile[],
-    onThunderBlinkHit: (fromX: number, toX: number, y: number, dir: 1 | -1, damage: number) => void
+    onThunderBlinkHit: (fromX: number, toX: number, y: number, dir: 1 | -1, damage: number) => void,
+    onSkillLinkWarp: (kind: CharacterId) => SkillLinkWarpResult | null,
+    onDetonateAllMarks: (kind: CharacterId, originX: number, originY: number, maxRange: number) => number
   ): void {
     this.danceTimer = 0;
     this.attackHitIssued = false;
     this.attackAfterimageTimer = 0;
+    this.activeAttackIsLinkArt = false;
+    this.activeAttackDetonates = false;
+    this.activeAttackMarkStacks = 0;
 
-    // Determine Attack Context: Parry Counter > Iaido Dash-Slash > 3-Hit Air Combo > 6-Hit Ground Combo
+    // Determine Attack Context: Skill-Link Art > Parry Counter > Iaido Dash-Slash > Air Combo > 6-Hit Ground Combo
     let context: AttackContext = 'ground';
     let step = 1;
-    if (this.parryCounterWindow > 0) {
+    const isSkillLink = this.skillLinkTimer > 0;
+    if (isSkillLink) {
+      this.skillLinkTimer = 0;
+      this.activeAttackIsLinkArt = true;
+      this.activeAttackDetonates = true;
+      const spec = getElementalMarkSpec(this.character.id);
+
+      if (this.character.id === 'zero') {
+        // ZERO LINK ART: ẢNH BỘ ÁM SÁT — Instant Shadow-Warp behind marked enemy + X-Cross Execute!
+        const warp = onSkillLinkWarp('zero');
+        if (warp && warp.warpedToX !== undefined) {
+          const oldX = this.x;
+          const oldY = this.y - 52;
+          if (this.lastJoints) {
+            for (let i = 0; i < 4; i++) {
+              const f = i / 4;
+              this.afterimages.push({
+                x: oldX + (warp.warpedToX - oldX) * f,
+                y: this.y,
+                facing: this.facing,
+                joints: this.lastJoints,
+                life: i * 0.02,
+                maxLife: 0.26,
+                color: '#34d399',
+              });
+            }
+          }
+          this.x = warp.warpedToX;
+          this.y = GROUND_Y;
+          this.onGround = true;
+          this.vy = 0;
+          this.facing = warp.warpedFacing ?? this.facing;
+          particles.emitChainArc(oldX, oldY, this.x, this.y - 52, '#34d399', 6.5);
+          particles.emitShockwave(this.x, this.y - 52, '#a7f3d0', 96, 0.25);
+        }
+        context = 'dash_slash';
+        this.comboStep = 4;
+        particles.emitSlashBeam(this.x + this.facing * 42, this.y - 54, -0.58 * this.facing, 260, '#10b981', 14);
+        particles.emitSlashBeam(this.x + this.facing * 42, this.y - 54, 0.58 * this.facing, 260, '#a7f3d0', 12);
+        particles.emitText(this.x, this.y - 114, `LIÊN CHIÊU · ${spec.linkArtName}!`, '#6ee7b7', 23);
+      } else if (this.character.id === 'raijin') {
+        // RAIJIN LINK ART: LÔI LIÊN THƯƠNG — High-speed Volt Thrust + Chain Lightning Detonation!
+        context = 'ground';
+        step = 4;
+        this.comboStep = 4;
+        particles.emitSlashBeam(this.x + this.facing * 68, this.y - 52, 0, 290, '#22d3ee', 14);
+        particles.emitSlashBeam(this.x + this.facing * 68, this.y - 52, -0.22 * this.facing, 220, '#facc15', 10);
+        particles.emitText(this.x, this.y - 114, `LIÊN CHIÊU · ${spec.linkArtName}!`, '#fef08a', 23);
+        onDetonateAllMarks('raijin', this.x + this.facing * 60, this.y - 52, 460);
+      } else if (this.character.id === 'kagura') {
+        // KAGURA LINK ART: NHẬT THỰC TRẢM — Sweeping Solar Crescent + Arena Flame Detonation!
+        context = 'ground';
+        step = 6;
+        this.comboStep = 6;
+        projectiles.push(
+          new Projectile({
+            x: this.x + this.facing * 48,
+            y: this.y - 54,
+            vx: this.facing * 1020,
+            vy: 0,
+            radius: 42,
+            damage: Math.round(44 * this.character.damageMultiplier),
+            kind: 'fire_wave',
+            fromPlayer: true,
+            color: '#f97316',
+            maxLife: 1.0,
+          })
+        );
+        particles.emitSlashBeam(this.x + this.facing * 56, this.y - 56, -0.35 * this.facing, 280, '#f97316', 15);
+        particles.emitSlashBeam(this.x + this.facing * 56, this.y - 56, 0.25 * this.facing, 240, '#fde047', 11);
+        particles.emitText(this.x, this.y - 114, `LIÊN CHIÊU · ${spec.linkArtName}!`, '#fde047', 23);
+        onDetonateAllMarks('kagura', this.x + this.facing * 90, this.y - 52, 440);
+      } else {
+        // KURO LINK ART: HUYẾT ẢNH TRẢM — Dash-Through Cross-Cut + Overcharge Ice Wall + Shatter Detonation!
+        context = 'dash_slash';
+        this.comboStep = 5;
+        particles.emitSlashBeam(this.x + this.facing * 56, this.y - 54, -0.42 * this.facing, 275, '#ef4444', 15);
+        particles.emitSlashBeam(this.x + this.facing * 56, this.y - 54, 0.38 * this.facing, 250, '#38bdf8', 11);
+        particles.emitText(this.x, this.y - 114, `LIÊN CHIÊU · ${spec.linkArtName}!`, '#fca5a5', 23);
+        onDetonateAllMarks('kuro', this.x + this.facing * 90, this.y - 52, 360);
+      }
+      camera.pulseZoom(1.13, 0.22);
+      camera.addShake(0.38, this.facing, 0);
+    } else if (this.parryCounterWindow > 0) {
       context = 'parry_counter';
       this.parryCounterWindow = 0;
+      this.activeAttackDetonates = true;
+      particles.emitSlashBeam(this.x + this.facing * 54, this.y - 54, -0.3 * this.facing, 250, '#38bdf8', 13);
       particles.emitText(this.x, this.y - 102, 'PHẢN CÔNG!', '#7dd3fc', 22);
     } else if (this.dashTimer > 0 || this.dashGraceTimer > 0) {
       context = 'dash_slash';
       this.dashTimer = 0;
       this.dashGraceTimer = 0;
+      this.activeAttackMarkStacks = 1;
+      this.activeAttackDetonates = true;
     } else if (!this.onGround) {
       context = 'air';
       this.airComboStep = (this.airComboStep % 3) + 1;
       step = this.airComboStep;
+      if (step === 3) this.activeAttackDetonates = true;
     } else {
       context = 'ground';
       this.comboStep = (this.comboStep % 6) + 1;
       step = this.comboStep;
+      if (step === 3 || step === 4) this.activeAttackMarkStacks = 1;
+      if (step === 6) this.activeAttackDetonates = true;
     }
 
     const move = getComboMoveForCharacter(this.character.id, step, context);
@@ -1037,16 +1257,18 @@ export class Player {
     const speedFactor = (this.awakened ? 0.8 : 1) * this.character.attackSpeedMultiplier;
     this.attackDuration = move.duration * speedFactor;
     this.attackTimer = this.attackDuration;
-    this.comboResetTimer = 0.88;
+    this.comboResetTimer = 0.92;
     this.poseTime = 0;
     this.airFlipTimer = 0;
 
     // Expressive squash-and-stretch impulse on strike
-    this.scaleX = move.heavy ? 1.2 : 1.1;
-    this.scaleY = move.heavy ? 0.84 : 0.92;
+    this.scaleX = move.heavy || isSkillLink ? 1.24 : 1.12;
+    this.scaleY = move.heavy || isSkillLink ? 0.82 : 0.92;
 
     // Forward combat lunge + acrobatic micro-hop on rising uppercuts & aerial vault slams!
-    const lungeMult = this.character.id === 'raijin' ? 1.18 : this.character.id === 'zero' ? 1.14 : 1;
+    const lungeMult =
+      (this.character.id === 'raijin' ? 1.18 : this.character.id === 'zero' ? 1.14 : 1) *
+      (isSkillLink ? 1.25 : 1);
     this.vx = this.facing * move.lungeSpeed * lungeMult;
     if (!this.onGround) {
       if (move.pose === 'air_slam') {
@@ -1055,12 +1277,12 @@ export class Player {
       } else {
         this.vy = Math.min(this.vy, -175); // Crisp anime air-combo hang
       }
-    } else if (move.hopVy) {
+    } else if (move.hopVy && !isSkillLink) {
       this.vy = move.hopVy;
       this.onGround = false;
     }
 
-    audio.playSlash(Math.min(4, step), this.awakened || move.heavy);
+    audio.playSlash(Math.min(4, step), this.awakened || move.heavy || isSkillLink);
 
     // Spawn multi-layered dynamic sweeping anime slash smear wedges
     const baseRadius = (this.awakened ? 112 : 78) + this.character.reachBonus * 0.55;
@@ -1240,17 +1462,21 @@ export class Player {
       camera.addShake(0.16, this.facing, 0);
     }
 
-    // Also allow punching/striking a nearby standing IceWall with [J]!
+    // Also allow striking/dash-slashing a nearby standing IceWall with [J] (Overcharges on Dash/Link/Awakened!)
     for (const wall of iceWalls) {
       if (
         wall.active &&
         !wall.launched &&
-        Math.abs(wall.x - this.x) < 125 &&
+        Math.abs(wall.x - this.x) < 145 &&
         Math.sign(wall.x - this.x || this.facing) === this.facing
       ) {
-        wall.launch(this.facing, particles);
+        const overcharge = this.activeAttackIsLinkArt || context === 'dash_slash' || this.awakened;
+        wall.launch(this.facing, particles, overcharge);
         audio.playCryoShatter();
-        camera.addShake(0.38, this.facing, 0);
+        if (overcharge) {
+          particles.emitText(wall.x, wall.y - 118, 'BĂNG HUYẾT XUNG KÍCH!', '#fca5a5', 22);
+        }
+        camera.addShake(overcharge ? 0.5 : 0.38, this.facing, 0);
       }
     }
   }
@@ -1262,11 +1488,14 @@ export class Player {
     _camera: Camera
   ): void {
     const move = this.currentMove;
-    const extraReach = move?.pose === 'dash_slash' || move?.pose === 'spear_thrust' ? 28 : 0;
-    const reach = (this.awakened ? 138 : 92) + this.character.reachBonus + extraReach;
+    const extraReach =
+      (move?.pose === 'dash_slash' || move?.pose === 'spear_thrust' ? 28 : 0) +
+      (this.activeAttackIsLinkArt ? 36 : 0);
+    const reach = (this.awakened ? 138 : 96) + this.character.reachBonus + extraReach;
     const baseDmg = move ? move.baseDamage : 20;
-    const damage = Math.round(baseDmg * this.character.damageMultiplier * (this.awakened ? 1.55 : 1));
-    const heavy = Boolean(move?.heavy || this.awakened);
+    const linkMult = this.activeAttackIsLinkArt ? 1.38 : 1;
+    const damage = Math.round(baseDmg * this.character.damageMultiplier * (this.awakened ? 1.55 : 1) * linkMult);
+    const heavy = Boolean(move?.heavy || this.awakened || this.activeAttackIsLinkArt);
 
     if (heavy && this.onGround) {
       particles.emitGroundCrack(
@@ -1281,12 +1510,15 @@ export class Player {
       x: this.x + this.facing * (reach * 0.55),
       y: this.y - 50,
       width: reach,
-      height: this.awakened ? 116 : 92,
+      height: this.awakened || this.activeAttackIsLinkArt ? 124 : 96,
       damage,
       knockX: this.facing * (move ? move.knockX : heavy ? 360 : 175),
       knockY: move ? move.knockY : -100,
       heavy,
-      unblockable: Boolean(this.awakened || move?.unblockable),
+      unblockable: Boolean(this.awakened || move?.unblockable || this.activeAttackIsLinkArt),
+      applyMarkStacks: this.activeAttackMarkStacks,
+      detonateMark: this.activeAttackDetonates,
+      isLinkArt: this.activeAttackIsLinkArt,
       hitIds: new Set<number>(),
     };
   }
@@ -1348,6 +1580,23 @@ export class Player {
     // Render dash & combo afterimages first
     if (!silhouetteMode) {
       renderAfterimages(ctx, this.afterimages);
+    }
+
+    // Render Skill-Link Active Resonance Ring (cues [J] Link Art follow-up!)
+    if (this.skillLinkTimer > 0 && !silhouetteMode) {
+      const spec = getElementalMarkSpec(this.character.id);
+      const pulse = 0.5 + 0.5 * Math.sin(this.poseTime * 22);
+      ctx.save();
+      ctx.translate(this.x, this.y - 52);
+      ctx.globalAlpha = Math.min(0.85, this.skillLinkTimer * 1.4);
+      ctx.strokeStyle = spec.secondaryColor;
+      ctx.lineWidth = 2.6 + pulse * 1.4;
+      ctx.setLineDash([12, 8]);
+      ctx.rotate(this.poseTime * 5.2);
+      ctx.beginPath();
+      ctx.arc(0, 0, 44 + pulse * 6, 0, Math.PI * 2);
+      ctx.stroke();
+      ctx.restore();
     }
 
     // Render Parry Defensive Arc Ring when active

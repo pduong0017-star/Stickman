@@ -10,6 +10,8 @@ export type ParticleKind =
   | 'ring'
   | 'crack'
   | 'ink_splatter'
+  | 'slash_beam'
+  | 'chain_arc'
   | 'text';
 
 interface Particle {
@@ -262,6 +264,69 @@ export class ParticleSystem {
     p.text = '';
   }
 
+  /**
+   * Razor-sharp tapering anime cut-line slashing across a struck enemy (Sakuga impact smear).
+   */
+  public emitSlashBeam(
+    x: number,
+    y: number,
+    angle: number,
+    length = 220,
+    color = '#ef4444',
+    width = 12
+  ): void {
+    const p = this.alloc();
+    p.active = true;
+    p.kind = 'slash_beam';
+    p.x = x;
+    p.y = y;
+    p.vx = Math.cos(angle) * 40;
+    p.vy = Math.sin(angle) * 40;
+    p.life = 0;
+    p.maxLife = 0.24;
+    p.size = length;
+    p.endSize = width;
+    p.color = color;
+    p.rotation = angle;
+    p.vRot = 0;
+    p.gravity = 0;
+    p.drag = 0.9;
+    p.alpha = 1;
+    p.text = '';
+  }
+
+  /**
+   * Jagged crackling energy tether connecting (x1, y1) directly to (x2, y2) — used for
+   * Raijin's Chain Lightning detonations and Zero's Shadow-Warp teleport ribbons!
+   */
+  public emitChainArc(
+    x1: number,
+    y1: number,
+    x2: number,
+    y2: number,
+    color = '#38bdf8',
+    thickness = 5
+  ): void {
+    const p = this.alloc();
+    p.active = true;
+    p.kind = 'chain_arc';
+    p.x = x1;
+    p.y = y1;
+    p.vx = x2; // store endpoint x2
+    p.vy = y2; // store endpoint y2
+    p.life = 0;
+    p.maxLife = 0.26;
+    p.size = thickness;
+    p.endSize = Math.random() * 100; // deterministic jitter seed
+    p.color = color;
+    p.rotation = 0;
+    p.vRot = 0;
+    p.gravity = 0;
+    p.drag = 1;
+    p.alpha = 1;
+    p.text = '';
+  }
+
   public emitText(x: number, y: number, text: string, color = '#f8fafc', size = 24): void {
     const p = this.alloc();
     p.active = true;
@@ -292,12 +357,14 @@ export class ParticleSystem {
         p.active = false;
         continue;
       }
-      const dragPow = Math.pow(p.drag, dt * 60);
-      p.vx *= dragPow;
-      p.vy = p.vy * dragPow + p.gravity * dt;
-      p.x += p.vx * dt;
-      p.y += p.vy * dt;
-      p.rotation += p.vRot * dt;
+      if (p.kind !== 'chain_arc') {
+        const dragPow = Math.pow(p.drag, dt * 60);
+        p.vx *= dragPow;
+        p.vy = p.vy * dragPow + p.gravity * dt;
+        p.x += p.vx * dt;
+        p.y += p.vy * dt;
+        p.rotation += p.vRot * dt;
+      }
 
       if (p.kind === 'ice' && p.y > GROUND_Y - 2) {
         p.y = GROUND_Y - 2;
@@ -444,6 +511,85 @@ export class ParticleSystem {
         ctx.translate(p.x, p.y);
         ctx.rotate(p.rotation);
         ctx.fillRect(-curSize * 0.5, -curSize * 0.5, curSize, curSize);
+        ctx.restore();
+        continue;
+      }
+
+      if (p.kind === 'slash_beam') {
+        ctx.save();
+        ctx.translate(p.x, p.y);
+        ctx.rotate(p.rotation);
+        const len = p.size * (0.72 + Math.min(1, t * 4.5) * 0.42);
+        const halfW = Math.max(0.8, p.endSize * inv * inv);
+        ctx.globalAlpha = Math.min(1, inv * 1.6);
+
+        // Bold dark ink outer rim for cel-shaded anime contrast
+        ctx.fillStyle = '#090b10';
+        ctx.beginPath();
+        ctx.moveTo(-len * 0.56, 0);
+        ctx.quadraticCurveTo(0, -(halfW + 3.2), len * 0.56, 0);
+        ctx.quadraticCurveTo(0, halfW + 3.2, -len * 0.56, 0);
+        ctx.closePath();
+        ctx.fill();
+
+        // Vivid elemental blade smear
+        ctx.fillStyle = p.color;
+        ctx.beginPath();
+        ctx.moveTo(-len * 0.52, 0);
+        ctx.quadraticCurveTo(0, -halfW, len * 0.52, 0);
+        ctx.quadraticCurveTo(0, halfW, -len * 0.52, 0);
+        ctx.closePath();
+        ctx.fill();
+
+        // Blinding white razor core
+        ctx.fillStyle = '#ffffff';
+        ctx.beginPath();
+        ctx.moveTo(-len * 0.42, 0);
+        ctx.quadraticCurveTo(0, -halfW * 0.42, len * 0.42, 0);
+        ctx.quadraticCurveTo(0, halfW * 0.42, -len * 0.42, 0);
+        ctx.closePath();
+        ctx.fill();
+        ctx.restore();
+        continue;
+      }
+
+      if (p.kind === 'chain_arc') {
+        ctx.save();
+        ctx.globalAlpha = Math.min(1, inv * 1.4);
+        const x1 = p.x;
+        const y1 = p.y;
+        const x2 = p.vx;
+        const y2 = p.vy;
+        const dx = x2 - x1;
+        const dy = y2 - y1;
+        const dist = Math.hypot(dx, dy) || 1;
+        const nx = -dy / dist;
+        const ny = dx / dist;
+        const segs = Math.max(5, Math.min(12, Math.round(dist / 36)));
+        const pts: Array<[number, number]> = [[x1, y1]];
+        for (let s = 1; s < segs; s++) {
+          const f = s / segs;
+          const jitter = Math.sin(p.endSize + s * 9.7 + p.life * 48) * 18 * Math.sin(f * Math.PI);
+          pts.push([x1 + dx * f + nx * jitter, y1 + dy * f + ny * jitter]);
+        }
+        pts.push([x2, y2]);
+
+        const strokePath = (color: string, width: number) => {
+          ctx.strokeStyle = color;
+          ctx.lineWidth = width;
+          ctx.lineCap = 'round';
+          ctx.lineJoin = 'round';
+          ctx.beginPath();
+          ctx.moveTo(pts[0][0], pts[0][1]);
+          for (let s = 1; s < pts.length; s++) {
+            ctx.lineTo(pts[s][0], pts[s][1]);
+          }
+          ctx.stroke();
+        };
+
+        strokePath('#090b10', p.size * inv + 5.5);
+        strokePath(p.color, p.size * inv + 2.2);
+        strokePath('#ffffff', Math.max(1.2, p.size * inv * 0.5));
         ctx.restore();
         continue;
       }

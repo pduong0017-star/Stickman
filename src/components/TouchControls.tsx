@@ -286,26 +286,30 @@ export const TouchControls: React.FC<TouchControlsProps> = ({ hud, onAction }) =
           <span className="font-display italic font-bold text-[11px] tracking-wide">NHẢY</span>
         </button>
 
-        {/* Primary Giant Anchor Button: CHÉM [J] (Tap or Hold for fluid 6-hit combo!) */}
+        {/* Primary Giant Anchor Button: CHÉM [J] (glows gold for Skill-Link Art follow-up!) */}
         <button
           type="button"
-          aria-label={`Tấn công ${hud.characterSkills.basicName}`}
+          aria-label={`Tấn công ${hud.cooldowns.skillLinkActive ? hud.cooldowns.skillLinkLabel : hud.characterSkills.basicName}`}
           {...bindTouchButton('attack', setAttackHeld)}
           className="absolute right-0 bottom-0 w-[64px] h-[64px] rounded-full flex flex-col items-center justify-center border-2 text-white transition-transform cursor-pointer"
           style={{
-            backgroundColor: hud.awakened
-              ? 'rgba(220, 38, 38, 0.86)'
-              : `${hud.characterAccent}d9`,
-            borderColor: '#ffffff',
-            boxShadow: `0 0 18px ${hud.awakened ? '#ef4444' : hud.characterAccent}88`,
-            transform: attackHeld ? 'scale(0.92)' : 'scale(1)',
+            backgroundColor: hud.cooldowns.skillLinkActive
+              ? 'rgba(202, 138, 4, 0.94)'
+              : hud.awakened
+                ? 'rgba(220, 38, 38, 0.86)'
+                : `${hud.characterAccent}d9`,
+            borderColor: hud.cooldowns.skillLinkActive ? '#fef08a' : '#ffffff',
+            boxShadow: hud.cooldowns.skillLinkActive
+              ? '0 0 24px rgba(250, 204, 21, 0.95)'
+              : `0 0 18px ${hud.awakened ? '#ef4444' : hud.characterAccent}88`,
+            transform: attackHeld ? 'scale(0.92)' : hud.cooldowns.skillLinkActive ? 'scale(1.06)' : 'scale(1)',
           }}
         >
-          <span className="font-display italic font-extrabold text-[17px] leading-none tracking-wider">
-            CHÉM
+          <span className="font-display italic font-extrabold text-[15px] leading-none tracking-wider">
+            {hud.cooldowns.skillLinkActive ? hud.cooldowns.skillLinkLabel : 'CHÉM'}
           </span>
           <span className="text-[7.5px] font-bold opacity-95 mt-0.5 tracking-wider">
-            GIỮ COMBO
+            {hud.cooldowns.skillLinkActive ? 'LIÊN CHIÊU!' : 'GIỮ COMBO'}
           </span>
         </button>
       </div>

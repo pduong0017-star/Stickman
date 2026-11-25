@@ -119,6 +119,7 @@ export class IceWall {
   public hp = 90;
   public maxHp = 90;
   public launched = false;
+  public overcharged = false;
   public vx = 0;
   public dir: 1 | -1 = 1;
   public active = true;
@@ -139,15 +140,20 @@ export class IceWall {
     }
   }
 
-  public launch(dir: 1 | -1, particles: ParticleSystem): void {
+  public launch(dir: 1 | -1, particles: ParticleSystem, overcharged = false): void {
     if (this.launched) return;
     this.launched = true;
+    this.overcharged = overcharged;
     this.dir = dir;
-    this.vx = dir * 1050;
+    this.vx = dir * (overcharged ? 1320 : 1080);
     this.life = 0;
-    this.maxLife = 1.1;
-    particles.emitShockwave(this.x, this.y - 55, '#38bdf8', 95, 0.25);
-    particles.emitIceShards(this.x, this.y - 60, 16, dir);
+    this.maxLife = overcharged ? 1.25 : 1.1;
+    particles.emitShockwave(this.x, this.y - 55, overcharged ? '#ef4444' : '#38bdf8', overcharged ? 135 : 95, 0.28);
+    particles.emitIceShards(this.x, this.y - 60, overcharged ? 26 : 16, dir);
+    if (overcharged) {
+      particles.emitSlashBeam(this.x, this.y - 58, -0.22 * dir, 240, '#ef4444', 13);
+      particles.emitSlashBeam(this.x, this.y - 58, 0.24 * dir, 220, '#38bdf8', 11);
+    }
   }
 
   public shatter(particles: ParticleSystem): void {
@@ -256,14 +262,20 @@ export class IceWall {
       ctx.stroke();
     }
 
-    // Blazing red crush underside glow when sliding into enemies (reference 00:13!)
+    // Blazing red crush underside glow (and full crimson aura when Overcharged!)
     if (this.launched) {
-      ctx.strokeStyle = '#ef4444';
-      ctx.lineWidth = 4;
+      ctx.strokeStyle = this.overcharged ? '#f43f5e' : '#ef4444';
+      ctx.lineWidth = this.overcharged ? 6.5 : 4;
       ctx.beginPath();
-      ctx.moveTo(-w * 0.56, -2);
-      ctx.lineTo(w * 0.56, -2);
+      ctx.moveTo(-w * 0.58, -2);
+      ctx.lineTo(w * 0.58, -2);
       ctx.stroke();
+      if (this.overcharged) {
+        drawShape();
+        ctx.strokeStyle = 'rgba(239, 68, 68, 0.85)';
+        ctx.lineWidth = 4.5;
+        ctx.stroke();
+      }
     }
 
     ctx.restore();

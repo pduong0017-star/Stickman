@@ -1,5 +1,5 @@
 import { ARENA_WIDTH, GRAVITY, GROUND_Y, clamp } from './rules';
-import type { EnemyType } from './types';
+import type { CharacterId, EnemyType } from './types';
 import type { AudioEngine } from './AudioEngine';
 import type { ParticleSystem } from './ParticleSystem';
 import {
@@ -9,6 +9,7 @@ import {
   renderStickman,
 } from './StickmanRenderer';
 import { blendSkeleton } from './animation';
+import { getElementalMarkSpec } from './synergy';
 import { Projectile } from './Entities';
 
 export interface EnemyAttackHit {
@@ -51,6 +52,11 @@ export class Enemy {
   public stunTimer = 0;
   public walkPhase = 0;
   public poseTime = 0;
+
+  // Elemental Synergy Mark (Ice / Volt / Flame / Shadow seal stackable 1..3!)
+  public markKind: CharacterId | null = null;
+  public markStacks = 0;
+  public markTimer = 0;
 
   // Attack State Machine (windup -> active -> recovery)
   public attackPhase: 'none' | 'windup' | 'active' | 'recovery' = 'none';
@@ -119,6 +125,29 @@ export class Enemy {
     particles.emitText(this.x, this.y - 102, 'STUNNED!', '#38bdf8', 22);
   }
 
+  public applyElementalMark(kind: CharacterId, addStacks: number, particles: ParticleSystem): void {
+    if (!this.alive || this.dying) return;
+    const spec = getElementalMarkSpec(kind);
+    if (this.markKind === kind) {
+      this.markStacks = Math.min(spec.maxStacks, this.markStacks + addStacks);
+    } else {
+      this.markKind = kind;
+      this.markStacks = Math.min(spec.maxStacks, Math.max(1, addStacks));
+    }
+    this.markTimer = 7.0;
+    particles.emitSparks(this.x, this.y - 62, 6, spec.primaryColor, 320);
+  }
+
+  public consumeElementalMark(expectedKind?: CharacterId): { kind: CharacterId; stacks: number } | null {
+    if (!this.markKind || this.markStacks <= 0) return null;
+    if (expectedKind && this.markKind !== expectedKind) return null;
+    const result = { kind: this.markKind, stacks: this.markStacks };
+    this.markKind = null;
+    this.markStacks = 0;
+    this.markTimer = 0;
+    return result;
+  }
+
   public takeDamage(
     dmg: number,
     knockX: number,
@@ -185,6 +214,14 @@ export class Enemy {
     this.hurtTimer = Math.max(0, this.hurtTimer - dt);
     this.stunTimer = Math.max(0, this.stunTimer - dt);
     this.attackCooldown = Math.max(0, this.attackCooldown - dt);
+    if (this.markTimer > 0) {
+      this.markTimer -= dt;
+      if (this.markTimer <= 0) {
+        this.markKind = null;
+        this.markStacks = 0;
+        this.markTimer = 0;
+      }
+    }
 
     if (this.trailHp > this.hp) {
       this.trailHp = Math.max(this.hp, this.trailHp - 110 * dt);
@@ -464,6 +501,51 @@ export class Enemy {
       weapon,
       jointsOverride: this.blendedJoints ?? undefined,
     });
+
+    // Elemental Synergy Mark Glyph (pulsing rotating rune + 1..3 stack orbs!)
+    if (this.markKind && this.markStacks > 0 && !this.dying && !isMono) {
+      const spec = getElementalMarkSpec(this.markKind);
+      const sealY = this.isBoss() ? this.y - 128 : this.y - 122;
+      const pulse = 1 + Math.sin(this.poseTime * 11) * (this.markStacks >= 3 ? 0.16 : 0.08);
+      ctx.save();
+      ctx.translate(this.x, sealY);
+      ctx.scale(pulse, pulse);
+
+      // Rotating elemental diamond frame
+      ctx.save();
+      ctx.rotate(this.poseTime * 2.2);
+      ctx.strokeStyle = '#090b10';
+      ctx.lineWidth = 5;
+      ctx.strokeRect(-11, -11, 22, 22);
+      ctx.strokeStyle = this.markStacks >= 3 ? spec.secondaryColor : spec.primaryColor;
+      ctx.lineWidth = 2.2;
+      ctx.strokeRect(-11, -11, 22, 22);
+      ctx.restore();
+
+      // Inner dark badge + glowing kanji seal
+      ctx.fillStyle = 'rgba(9, 11, 16, 0.85)';
+      ctx.beginPath();
+      ctx.arc(0, 0, 10, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.font = '900 13px "Noto Serif JP", serif';
+      ctx.textAlign = 'center';
+      ctx.textBaseline = 'middle';
+      ctx.fillStyle = this.markStacks >= 3 ? '#ffffff' : spec.secondaryColor;
+      ctx.fillText(spec.kanji, 0, 1);
+
+      // Stack pips beneath seal (1..3)
+      for (let s = 0; s < 3; s++) {
+        const px = (s - 1) * 9;
+        ctx.fillStyle = s < this.markStacks ? spec.secondaryColor : 'rgba(51, 65, 85, 0.7)';
+        ctx.strokeStyle = '#090b10';
+        ctx.lineWidth = 1.6;
+        ctx.beginPath();
+        ctx.arc(px, 16, s < this.markStacks ? 3.2 : 2.3, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.stroke();
+      }
+      ctx.restore();
+    }
 
     // Overhead mini HP bar & faction label for regular enemies
     if (!this.isBoss() && !this.dying && !isMono) {

@@ -35,6 +35,12 @@ import { Enemy, type EnemyAttackHit } from './Enemy';
 import { Boss } from './Boss';
 import { IceWall, MagicCircle, MagmaPillar, PlasticChair, Projectile } from './Entities';
 import { UltimateCutscene } from './UltimateCutscene';
+import {
+  computeDetonationDamage,
+  computeOverdriveUltimateDamage,
+  computeSynergyCooldownRefund,
+  getElementalMarkSpec,
+} from './synergy';
 
 const BEST_SCORE_KEY = 'scarlet_sheath_best_score_v1';
 const SELECTED_CHAR_KEY = 'scarlet_sheath_char_v1';
@@ -80,6 +86,11 @@ export class Game {
 
   // Combat & Wave State
   private hitstopTimer = 0;
+  private impactFrameTimer = 0;
+  private impactFrameDuration = 0.05;
+  private impactFrameColor = '#ef4444';
+  private impactFrameWorldX = ARENA_WIDTH * 0.5;
+  private impactFrameWorldY = GROUND_Y - 56;
   private bossIntroTimer = 0;
   private bossIntroBanner: BossIntroBanner | null = null;
   private waveStage = 0; // 0: Act01, 1: Act02, 2: Act03 Swarm, 3+: Boss Rush index (waveStage - 3)
@@ -552,6 +563,7 @@ export class Game {
     this.camera.update(dt, this.viewW, this.viewH);
     this.comboPulse = Math.max(0, this.comboPulse - dt * 4.5);
     this.awakenPromptTimer = Math.max(0, this.awakenPromptTimer - dt);
+    this.impactFrameTimer = Math.max(0, this.impactFrameTimer - dt);
 
     // Handle final victory/defeat beat before freezing snapshot
     if (this.pendingOutcome) {
@@ -653,14 +665,31 @@ export class Game {
           this.bg.triggerCrimsonFlash(0.95);
           this.audio.setBgmIntensity(2);
           this.awakenPromptTimer = 0;
+          this.triggerImpactFrame(
+            this.player.x,
+            this.player.y - 54,
+            this.player.character.awakeningWaveColor,
+            0.065
+          );
+          // Awakening-Cancel Shockwave: launches nearby foes slightly upward & brands them with Elemental Marks!
+          for (const enemy of this.enemies) {
+            if (!enemy.alive || enemy.dying) continue;
+            if (Math.abs(enemy.x - this.player.x) < 260) {
+              enemy.applyElementalMark(this.player.character.id, 2, this.particles);
+              if (!enemy.isBoss()) {
+                enemy.vy = Math.min(enemy.vy, -240);
+                enemy.onGround = false;
+              }
+            }
+          }
         }
       },
       onThunderBlinkHit: (fromX, toX, y, dir, damage) => {
-        const minX = Math.min(fromX, toX) - 36;
-        const maxX = Math.max(fromX, toX) + 36;
+        const minX = Math.min(fromX, toX) - 42;
+        const maxX = Math.max(fromX, toX) + 42;
         for (const enemy of this.enemies) {
           if (!enemy.alive || enemy.dying) continue;
-          if (enemy.x >= minX && enemy.x <= maxX && Math.abs(enemy.y - 48 - y) < 95) {
+          if (enemy.x >= minX && enemy.x <= maxX && Math.abs(enemy.y - 48 - y) < 102) {
             const killed = enemy.takeDamage(
               damage,
               dir * 290,
@@ -669,13 +698,49 @@ export class Game {
               this.audio,
               true
             );
+            enemy.applyElementalMark('raijin', 2, this.particles);
             enemy.applyStun(enemy.isBoss() ? 0.9 : 1.45, this.particles);
-            this.particles.emitLightning(enemy.x, enemy.y - 52, '#fef08a', 54);
+            this.particles.emitLightning(enemy.x, enemy.y - 52, '#fef08a', 58);
+            this.particles.emitSlashBeam(enemy.x, enemy.y - 54, -0.25 * dir, 210, '#22d3ee', 10);
             this.registerPlayerHit(damage, 32, true, killed, enemy);
             this.hitstopTimer = Math.max(this.hitstopTimer, 0.05);
           }
         }
       },
+      onCryoSummonChill: (centerX, radius) => {
+        for (const enemy of this.enemies) {
+          if (!enemy.alive || enemy.dying) continue;
+          if (Math.abs(enemy.x - centerX) <= radius) {
+            enemy.applyElementalMark('kuro', 2, this.particles);
+            this.particles.emitIceShards(enemy.x, enemy.y - 48, 8, enemy.x >= centerX ? 1 : -1);
+          }
+        }
+      },
+      onSkillLinkWarp: (kind) => {
+        // Find nearest marked enemy first, falling back to nearest alive enemy within 650px!
+        let best: Enemy | null = null;
+        let bestScore = Infinity;
+        for (const enemy of this.enemies) {
+          if (!enemy.alive || enemy.dying) continue;
+          const dist = Math.abs(enemy.x - this.player.x);
+          if (dist > 680) continue;
+          const markedBonus = enemy.markKind === kind ? -450 : 0;
+          const score = dist + markedBonus;
+          if (score < bestScore) {
+            bestScore = score;
+            best = enemy;
+          }
+        }
+        if (!best) return null;
+        const behindDir: 1 | -1 = best.x >= this.player.x ? 1 : -1;
+        const warpedToX = clamp(best.x + behindDir * 68, 52, ARENA_WIDTH - 52);
+        const warpedFacing: 1 | -1 = best.x >= warpedToX ? 1 : -1;
+        // Detonate immediately on warp arrival for Zero!
+        this.detonateElementalMarks(kind, best.x, best.y - 52, 230);
+        return { warpedToX, warpedFacing };
+      },
+      onDetonateAllMarks: (kind, originX, originY, maxRange) =>
+        this.detonateElementalMarks(kind, originX, originY, maxRange),
     });
 
     // Update Magma Pillars (Kagura [U] Skill)
@@ -689,7 +754,7 @@ export class Game {
       if (mp.erupted) {
         for (const enemy of this.enemies) {
           if (!enemy.alive || enemy.dying || mp.hitEnemyIds.has(enemy.id)) continue;
-          if (Math.abs(enemy.x - mp.x) < 62 && enemy.y > GROUND_Y - 190) {
+          if (Math.abs(enemy.x - mp.x) < 66 && enemy.y > GROUND_Y - 195) {
             mp.hitEnemyIds.add(enemy.id);
             const killed = enemy.takeDamage(
               mp.damage,
@@ -699,7 +764,8 @@ export class Game {
               this.audio,
               true
             );
-            this.particles.emitText(enemy.x, enemy.y - 100, 'BURN!', '#fb923c', 22);
+            enemy.applyElementalMark('kagura', 2, this.particles);
+            this.particles.emitText(enemy.x, enemy.y - 100, 'VIÊM ẤN!', '#fb923c', 20);
             this.registerPlayerHit(mp.damage, 30, true, killed, enemy);
             this.hitstopTimer = Math.max(this.hitstopTimer, 0.045);
           }
@@ -717,21 +783,38 @@ export class Game {
       if (wall.active && wall.launched) {
         for (const enemy of this.enemies) {
           if (!enemy.alive || enemy.dying || wall.hitEnemyIds.has(enemy.id)) continue;
-          if (Math.abs(enemy.x - wall.x) < 62 && Math.abs(enemy.y - wall.y) < 110) {
+          const hitRadius = wall.overcharged ? 86 : 64;
+          if (Math.abs(enemy.x - wall.x) < hitRadius && Math.abs(enemy.y - wall.y) < 115) {
             wall.hitEnemyIds.add(enemy.id);
+            const baseCrush = enemy.isBoss() ? 78 : 130;
+            const crushDmg = wall.overcharged ? Math.round(baseCrush * 1.45) : baseCrush;
             const killed = enemy.takeDamage(
-              enemy.isBoss() ? 78 : 130,
-              wall.dir * 520,
-              -280,
+              crushDmg,
+              wall.dir * (wall.overcharged ? 620 : 520),
+              -310,
               this.particles,
               this.audio,
               true
             );
-            this.particles.emitText(enemy.x, enemy.y - 98, 'CRUSHED!', '#38bdf8', 26);
-            this.particles.emitIceShards(enemy.x, enemy.y - 50, 14, wall.dir);
-            this.registerPlayerHit(enemy.isBoss() ? 78 : 130, 38, true, killed, enemy);
-            this.hitstopTimer = Math.max(this.hitstopTimer, 0.055);
-            this.camera.addShake(0.5, wall.dir, 0);
+            enemy.applyElementalMark('kuro', wall.overcharged ? 3 : 2, this.particles);
+            if (wall.overcharged) {
+              enemy.applyStun(enemy.isBoss() ? 1.1 : 1.7, this.particles);
+              this.particles.emitSlashBeam(enemy.x, enemy.y - 54, -0.35 * wall.dir, 260, '#ef4444', 14);
+              this.particles.emitSlashBeam(enemy.x, enemy.y - 54, 0.35 * wall.dir, 240, '#38bdf8', 12);
+              this.triggerImpactFrame(enemy.x, enemy.y - 52, '#38bdf8', 0.055);
+              this.detonateElementalMarks('kuro', enemy.x, enemy.y - 52, 180);
+            }
+            this.particles.emitText(
+              enemy.x,
+              enemy.y - 98,
+              wall.overcharged ? 'BĂNG HUYẾT PHÁ!' : 'CRUSHED!',
+              wall.overcharged ? '#fca5a5' : '#38bdf8',
+              26
+            );
+            this.particles.emitIceShards(enemy.x, enemy.y - 50, wall.overcharged ? 24 : 14, wall.dir);
+            this.registerPlayerHit(crushDmg, wall.overcharged ? 52 : 38, true, killed, enemy);
+            this.hitstopTimer = Math.max(this.hitstopTimer, wall.overcharged ? 0.068 : 0.055);
+            this.camera.addShake(wall.overcharged ? 0.62 : 0.5, wall.dir, 0);
           }
         }
       }
@@ -774,9 +857,32 @@ export class Game {
             this.audio,
             hb.heavy
           );
-          this.registerPlayerHit(hb.damage, hb.heavy ? 26 : 16, hb.heavy, killed, enemy);
-          this.hitstopTimer = Math.max(this.hitstopTimer, hb.heavy ? 0.048 : 0.022);
-          this.camera.addShake(hb.heavy ? 0.34 : 0.14, this.player.facing, 0);
+          const chId = this.player.character.id;
+          const accentCol = this.player.awakened
+            ? this.player.character.awakeningWaveColor
+            : this.player.character.accentColor;
+
+          // Razor directional slash smear on heavy, finisher, and Link hits!
+          if (hb.heavy || hb.isLinkArt) {
+            const ang = (Math.random() - 0.5) * 0.9 - 0.25 * this.player.facing;
+            this.particles.emitSlashBeam(enemy.x, enemy.y - 54, ang, hb.isLinkArt ? 260 : 195, accentCol, hb.isLinkArt ? 13 : 9);
+          }
+
+          if (hb.applyMarkStacks && hb.applyMarkStacks > 0 && !killed) {
+            enemy.applyElementalMark(chId, hb.applyMarkStacks, this.particles);
+          }
+
+          this.registerPlayerHit(hb.damage, hb.isLinkArt ? 42 : hb.heavy ? 26 : 16, hb.heavy, killed, enemy);
+
+          // Trigger Elemental Detonation if finisher / Link Art / Dash-Slash hits a marked enemy!
+          if (hb.detonateMark && enemy.markKind === chId && enemy.markStacks > 0) {
+            this.detonateElementalMarks(chId, enemy.x, enemy.y - 52, chId === 'raijin' ? 460 : 210);
+          } else if (hb.isLinkArt || (hb.heavy && this.player.comboStep === 6) || killed) {
+            this.triggerImpactFrame(enemy.x, enemy.y - 54, accentCol, hb.isLinkArt ? 0.052 : 0.038);
+          }
+
+          this.hitstopTimer = Math.max(this.hitstopTimer, hb.isLinkArt ? 0.062 : hb.heavy ? 0.048 : 0.022);
+          this.camera.addShake(hb.isLinkArt ? 0.45 : hb.heavy ? 0.34 : 0.14, this.player.facing, 0);
         }
       }
     }
@@ -810,7 +916,7 @@ export class Game {
       }
 
       if (proj.fromPlayer) {
-        // Player Sword Waves or Reflected Enemy Projectiles hitting enemies!
+        // Player Sword Waves, Kunai, Volt Lances, Fire Waves or Reflected Enemy Projectiles hitting enemies!
         for (const enemy of this.enemies) {
           if (!enemy.alive || enemy.dying || proj.hitEnemyIds.has(enemy.id)) continue;
           if (Math.abs(enemy.x - proj.x) < proj.radius + 26 && Math.abs(enemy.y - 52 - proj.y) < proj.radius + 46) {
@@ -824,8 +930,23 @@ export class Game {
               this.audio,
               true
             );
+            // Apply Elemental Marks from character projectiles!
+            if (proj.kind === 'kunai' || proj.kind === 'void_crescent') {
+              enemy.applyElementalMark('zero', 1, this.particles);
+            } else if (proj.kind === 'volt_lance') {
+              enemy.applyElementalMark('raijin', 1, this.particles);
+            } else if (proj.kind === 'fire_wave') {
+              if (enemy.markKind === 'kagura' && enemy.markStacks >= 2) {
+                this.detonateElementalMarks('kagura', enemy.x, enemy.y - 52, 220);
+              } else {
+                enemy.applyElementalMark('kagura', 1, this.particles);
+              }
+            } else if (proj.kind === 'sword_wave') {
+              enemy.applyElementalMark('kuro', 1, this.particles);
+            }
+            this.particles.emitSlashBeam(enemy.x, enemy.y - 52, Math.atan2(proj.vy, proj.vx), 185, proj.color, 9);
             this.registerPlayerHit(proj.damage, 30, true, killed, enemy);
-            this.hitstopTimer = Math.max(this.hitstopTimer, 0.045);
+            this.hitstopTimer = Math.max(this.hitstopTimer, 0.042);
             this.camera.addShake(0.35, dir, 0);
             if (
               proj.kind !== 'sword_wave' &&
@@ -1033,20 +1154,135 @@ export class Game {
 
     this.audio.playParry();
     this.hitstopTimer = 0.075;
+    this.triggerImpactFrame(fxX, fxY, '#38bdf8', 0.055);
     this.camera.pulseZoom(1.16, 0.24);
     this.camera.addShake(0.45, -this.player.facing, 0);
     this.particles.emitSparks(fxX, fxY, 26, '#38bdf8', 680);
     this.particles.emitSparks(fxX, fxY, 12, '#ffffff', 520);
     this.particles.emitShockwave(fxX, fxY, '#38bdf8', 115, 0.28);
+    this.particles.emitSlashBeam(fxX, fxY, -0.4, 220, '#38bdf8', 11);
     this.particles.emitText(this.player.x, this.player.y - 108, 'PERFECT PARRY!', '#38bdf8', 26);
 
     if (attacker) {
+      attacker.applyElementalMark(this.player.character.id, 3, this.particles);
       if (attacker instanceof Boss && attacker.bossId === 'boss_haiku') {
         attacker.breakShield(this.particles);
       } else {
         attacker.applyStun(attacker.isBoss() ? 1.45 : 2.1, this.particles);
       }
     }
+  }
+
+  private triggerImpactFrame(worldX: number, worldY: number, color: string, duration = 0.05): void {
+    this.impactFrameWorldX = worldX;
+    this.impactFrameWorldY = worldY;
+    this.impactFrameColor = color;
+    this.impactFrameDuration = duration;
+    this.impactFrameTimer = Math.max(this.impactFrameTimer, duration);
+  }
+
+  /**
+   * Core Skill-Synergy Detonation Engine!
+   * Consumes matching Elemental Marks on enemies within maxRange and executes each fighter's
+   * signature chain-reaction burst, cooldown refunds, and Sakuga impact frames.
+   */
+  private detonateElementalMarks(
+    kind: CharacterId,
+    originX: number,
+    originY: number,
+    maxRange: number
+  ): number {
+    const spec = getElementalMarkSpec(kind);
+    const targets = this.enemies.filter(
+      (e) => e.alive && !e.dying && e.markKind === kind && e.markStacks > 0 && Math.abs(e.x - originX) <= maxRange
+    );
+    if (targets.length === 0) return 0;
+
+    let prevX = originX;
+    let prevY = originY;
+    let detonatedCount = 0;
+
+    for (const enemy of targets) {
+      const mark = enemy.consumeElementalMark(kind);
+      if (!mark) continue;
+      detonatedCount++;
+
+      const burstDmg = computeDetonationDamage(
+        kind,
+        mark.stacks,
+        this.player.awakened,
+        this.player.character.damageMultiplier
+      );
+      const knockDir = enemy.x >= this.player.x ? 1 : -1;
+      const launchY = kind === 'kagura' ? -440 : kind === 'kuro' ? -240 : -210;
+      const killed = enemy.takeDamage(
+        burstDmg,
+        knockDir * (kind === 'kuro' ? 420 : 280),
+        launchY,
+        this.particles,
+        this.audio,
+        true
+      );
+
+      // Character-specific Visual & Tactical Detonation Payoffs!
+      if (kind === 'raijin') {
+        // Chain Lightning Arcs jumping from player/prev target to every marked enemy!
+        this.particles.emitChainArc(prevX, prevY, enemy.x, enemy.y - 54, '#facc15', 6.5);
+        this.particles.emitChainArc(prevX, prevY - 12, enemy.x, enemy.y - 44, '#22d3ee', 4.5);
+        this.particles.emitLightning(enemy.x, enemy.y - 115, '#fef08a', 110);
+        if (!killed) enemy.applyStun(enemy.isBoss() ? 0.85 : 1.35, this.particles);
+        this.audio.playLaser();
+      } else if (kind === 'kagura') {
+        // Synchronized Magma Chain Eruption beneath every burning enemy!
+        this.particles.emitShockwave(enemy.x, enemy.y - 46, '#f97316', 135, 0.3);
+        this.particles.emitEmbers(enemy.x, enemy.y - 50, 26, '#fde047');
+        this.magmaPillars.push(
+          new MagmaPillar(clamp(enemy.x, 64, ARENA_WIDTH - 64), knockDir as 1 | -1, 0.05, Math.round(burstDmg * 0.65))
+        );
+        this.audio.playCryoShatter();
+      } else if (kind === 'zero') {
+        // Twin Emerald X-Cross Shadow Execute Beams + Air Jump Refill!
+        this.particles.emitSlashBeam(enemy.x, enemy.y - 54, -0.65, 290, '#10b981', 15);
+        this.particles.emitSlashBeam(enemy.x, enemy.y - 54, 0.65, 290, '#a7f3d0', 13);
+        this.particles.emitShockwave(enemy.x, enemy.y - 54, '#34d399', 120, 0.28);
+        this.player.jumpsLeft = this.player.character.maxJumps;
+      } else {
+        // Kuro Frost-Blood Shatter Explosion!
+        this.particles.emitIceShards(enemy.x, enemy.y - 54, 24, knockDir);
+        this.particles.emitSlashBeam(enemy.x, enemy.y - 54, -0.45, 270, '#ef4444', 14);
+        this.particles.emitSlashBeam(enemy.x, enemy.y - 54, 0.45, 250, '#38bdf8', 12);
+        this.particles.emitShockwave(enemy.x, enemy.y - 54, '#38bdf8', 130, 0.3);
+        if (!killed) enemy.applyStun(enemy.isBoss() ? 0.75 : 1.25, this.particles);
+        this.audio.playCryoShatter();
+      }
+
+      this.particles.emitText(
+        enemy.x,
+        enemy.y - 116,
+        `${spec.detonateCallout} x${mark.stacks}`,
+        spec.secondaryColor,
+        26
+      );
+      this.registerPlayerHit(burstDmg, 48 + mark.stacks * 16, true, killed, enemy);
+      prevX = enemy.x;
+      prevY = enemy.y - 54;
+    }
+
+    if (detonatedCount > 0) {
+      const refund = computeSynergyCooldownRefund(kind, detonatedCount);
+      this.player.cryoCooldown = Math.max(0, this.player.cryoCooldown - refund.specialRefund);
+      this.player.dashCooldown = Math.max(0, this.player.dashCooldown - refund.dashRefund);
+      if (refund.healAmount > 0) {
+        this.player.hp = Math.min(this.player.maxHp, this.player.hp + refund.healAmount);
+      }
+      this.player.addRage(refund.rageBonus, this.mode === 'training');
+      this.triggerImpactFrame(prevX, prevY, spec.secondaryColor, 0.06);
+      this.hitstopTimer = Math.max(this.hitstopTimer, 0.068);
+      this.camera.pulseZoom(1.16, 0.24);
+      this.camera.addShake(0.54, this.player.facing, 0);
+    }
+
+    return detonatedCount;
   }
 
   private registerPlayerHit(
@@ -1088,15 +1324,20 @@ export class Game {
     this.player.invulnTimer = 3.2;
     this.bg.triggerCrimsonFlash(0.95);
     const ch = this.player.character;
+    const isOverdrive = this.player.awakened;
 
     this.cutscene.start(
       {
         onKanjiImpact: () => {
-          // Every active enemy gets obliterated (or heavily damaged if Boss) with character-specific Ultimate payoffs!
+          // Every active enemy gets obliterated (or heavily damaged if Boss) with Overdrive + Mark Resonance!
           let clearedNonBoss = 0;
           for (const enemy of this.enemies) {
             if (!enemy.alive || enemy.dying) continue;
-            const ultDmg = enemy.isBoss() ? ch.ultimateBossDamage : 9999;
+            const consumed = enemy.consumeElementalMark(ch.id);
+            const markStacks = consumed ? consumed.stacks : 0;
+            const ultDmg = enemy.isBoss()
+              ? computeOverdriveUltimateDamage(ch.ultimateBossDamage, isOverdrive, markStacks)
+              : 9999;
             const killed = enemy.takeDamage(
               ultDmg,
               enemy.x >= this.player.x ? 280 : -280,
@@ -1108,49 +1349,76 @@ export class Game {
             if (ch.id === 'raijin') {
               this.particles.emitLightning(enemy.x, enemy.y - 120, '#fef08a', 135);
               if (!killed) {
-                enemy.applyStun(2.2, this.particles);
+                enemy.applyStun(isOverdrive ? 2.8 : 2.2, this.particles);
               }
             } else if (ch.id === 'kagura') {
               this.particles.emitEmbers(enemy.x, enemy.y - 50, 22, '#f97316');
             } else if (ch.id === 'zero') {
-              this.particles.emitSparks(enemy.x, enemy.y - 50, 20, '#34d399', 540);
+              this.particles.emitSlashBeam(enemy.x, enemy.y - 52, -0.6, 260, '#10b981', 14);
+              this.particles.emitSlashBeam(enemy.x, enemy.y - 52, 0.6, 260, '#a7f3d0', 12);
             } else {
               this.particles.emitShockwave(enemy.x, enemy.y - 48, '#ef4444', 110, 0.34);
+              this.particles.emitSlashBeam(enemy.x, enemy.y - 52, -0.32, 280, '#ef4444', 14);
             }
             this.particles.emitSmoke(enemy.x, enemy.y - 30, 18, '#f8fafc', -95, 45);
-            this.registerPlayerHit(enemy.isBoss() ? ch.ultimateBossDamage : 120, 48, true, killed, enemy);
+            this.registerPlayerHit(enemy.isBoss() ? ultDmg : 120, isOverdrive ? 68 : 48, true, killed, enemy);
             if (killed && !enemy.isBoss()) clearedNonBoss++;
           }
 
-          // Character-specific Ultimate battlefield aftermath!
+          // Open Skill-Link right after Ultimate so players can immediately chain into follow-ups!
+          this.player.skillLinkTimer = 1.25;
+          if (isOverdrive) {
+            this.triggerImpactFrame(this.player.x, this.player.y - 58, ch.ultimateSecondaryColor, 0.08);
+          }
+
+          // Character-specific Ultimate battlefield aftermath (+ Awakened Overdrive Storm!)
           if (ch.id === 'raijin') {
             this.player.dashCooldown = 0;
             this.player.cryoCooldown = 0;
-            this.particles.emitText(this.player.x, this.player.y - 110, 'LÔI PHẠT · CHOÁNG!', '#fef08a', 24);
-          } else if (ch.id === 'kagura') {
-            this.player.hp = Math.min(this.player.maxHp, this.player.hp + 35);
-            // Spawn 3 blazing residual Magma Pillars across the battlefield!
-            for (const ox of [-150, 0, 150]) {
-              const px = clamp(this.player.x + ox, 70, ARENA_WIDTH - 70);
-              this.magmaPillars.push(new MagmaPillar(px, this.player.facing, 0.08, 48));
+            if (isOverdrive) {
+              for (const ox of [-220, -90, 90, 220]) {
+                const lx = clamp(this.player.x + ox, 60, ARENA_WIDTH - 60);
+                this.particles.emitLightning(lx, GROUND_Y - 125, '#fef08a', 145);
+                this.particles.emitChainArc(this.player.x, this.player.y - 56, lx, GROUND_Y - 24, '#22d3ee', 5);
+              }
             }
-            this.particles.emitText(this.player.x, this.player.y - 110, 'VIÊM NGỤC · +35 HP!', '#fde047', 24);
+            this.particles.emitText(
+              this.player.x,
+              this.player.y - 114,
+              isOverdrive ? 'TUYỆT KỸ THỨC TỈNH · THIÊN LÔI!' : 'LÔI PHẠT · CHOÁNG!',
+              '#fef08a',
+              24
+            );
+          } else if (ch.id === 'kagura') {
+            this.player.hp = Math.min(this.player.maxHp, this.player.hp + (isOverdrive ? 50 : 35));
+            const offsets = isOverdrive ? [-240, -120, 0, 120, 240] : [-150, 0, 150];
+            for (const ox of offsets) {
+              const px = clamp(this.player.x + ox, 70, ARENA_WIDTH - 70);
+              this.magmaPillars.push(new MagmaPillar(px, this.player.facing, 0.08, isOverdrive ? 64 : 48));
+            }
+            this.particles.emitText(
+              this.player.x,
+              this.player.y - 114,
+              isOverdrive ? 'TUYỆT KỸ THỨC TỈNH · +50 HP!' : 'VIÊM NGỤC · +35 HP!',
+              '#fde047',
+              24
+            );
           } else if (ch.id === 'zero') {
             this.player.dashCooldown = 0;
             this.player.cryoCooldown = 0;
             this.player.parryCooldown = 0;
             this.player.invulnTimer = Math.max(this.player.invulnTimer, 3.0);
-            // Unleash 360-degree ring of 8 piercing Emerald Shadow Kunai!
-            for (let i = 0; i < 8; i++) {
-              const a = (i / 8) * Math.PI * 2;
+            const kunaiCount = isOverdrive ? 12 : 8;
+            for (let i = 0; i < kunaiCount; i++) {
+              const a = (i / kunaiCount) * Math.PI * 2;
               this.projectiles.push(
                 new Projectile({
                   x: this.player.x,
                   y: this.player.y - 52,
-                  vx: Math.cos(a) * 1040,
-                  vy: Math.sin(a) * 1040,
+                  vx: Math.cos(a) * 1080,
+                  vy: Math.sin(a) * 1080,
                   radius: 18,
-                  damage: 32,
+                  damage: isOverdrive ? 42 : 32,
                   kind: 'kunai',
                   fromPlayer: true,
                   color: '#10b981',
@@ -1158,9 +1426,34 @@ export class Game {
                 })
               );
             }
-            this.particles.emitText(this.player.x, this.player.y - 110, 'VÔ ẢNH · RESET CHIÊU!', '#6ee7b7', 24);
+            this.particles.emitText(
+              this.player.x,
+              this.player.y - 114,
+              isOverdrive ? 'TUYỆT KỸ THỨC TỈNH · VÔ ẢNH!' : 'VÔ ẢNH · RESET CHIÊU!',
+              '#6ee7b7',
+              24
+            );
           } else {
             this.particles.emitShockwave(this.player.x, this.player.y - 52, '#dc2626', 180, 0.36);
+            if (isOverdrive) {
+              for (const dir of [-1, 1] as const) {
+                this.projectiles.push(
+                  new Projectile({
+                    x: this.player.x + dir * 40,
+                    y: this.player.y - 56,
+                    vx: dir * 1100,
+                    vy: 0,
+                    radius: 44,
+                    damage: 54,
+                    kind: 'sword_wave',
+                    fromPlayer: true,
+                    color: '#ef4444',
+                    maxLife: 1.1,
+                  })
+                );
+              }
+              this.particles.emitText(this.player.x, this.player.y - 114, 'TUYỆT KỸ THỨC TỈNH · 断!', '#fca5a5', 25);
+            }
           }
 
           // Clear enemy bullets on screen
@@ -1263,7 +1556,33 @@ export class Game {
 
     ctx.restore(); // End world space
 
-    // 3. Peripheral Crimson Low-HP Vignette (gaze routing cue)
+    // 3. Sakuga Anime Impact Frame Flash (1–2 frame monochrome speedline punch on Detonations/Finishers/Parry!)
+    if (this.impactFrameTimer > 0 && !this.cutscene.active) {
+      const ratio = clamp(this.impactFrameTimer / Math.max(0.01, this.impactFrameDuration), 0, 1);
+      const isPeak = ratio > 0.55;
+      ctx.save();
+      ctx.fillStyle = isPeak ? 'rgba(9, 11, 16, 0.42)' : 'rgba(255, 255, 255, 0.18)';
+      ctx.fillRect(0, 0, this.viewW, this.viewH);
+
+      // Converging anime impact rays centered around screen midpoint biased toward impact side
+      const cx = this.viewW * 0.5 + clamp((this.impactFrameWorldX - this.player.x) * 0.35, -180, 180);
+      const cy = this.viewH * 0.54;
+      const maxR = Math.hypot(this.viewW, this.viewH) * 0.72;
+      ctx.globalAlpha = ratio * 0.85;
+      for (let i = 0; i < 18; i++) {
+        const a = (i / 18) * Math.PI * 2 + ratio * 0.5;
+        const inner = 75 + (i % 3) * 32;
+        ctx.strokeStyle = i % 3 === 0 ? this.impactFrameColor : isPeak ? '#ffffff' : '#090b10';
+        ctx.lineWidth = i % 2 === 0 ? 3.2 : 1.6;
+        ctx.beginPath();
+        ctx.moveTo(cx + Math.cos(a) * inner, cy + Math.sin(a) * inner);
+        ctx.lineTo(cx + Math.cos(a) * maxR, cy + Math.sin(a) * maxR);
+        ctx.stroke();
+      }
+      ctx.restore();
+    }
+
+    // 4. Peripheral Crimson Low-HP Vignette (gaze routing cue)
     if (this.state === 'playing' && this.player.hp <= this.player.maxHp * 0.3 && !this.cutscene.active) {
       const pulse = 0.22 + 0.14 * Math.sin(this.elapsedTime * 7);
       const vig = ctx.createRadialGradient(
@@ -1280,7 +1599,7 @@ export class Game {
       ctx.fillRect(0, 0, this.viewW, this.viewH);
     }
 
-    // 4. Full-screen Scarlet Sheath Cutscene Overlay
+    // 5. Full-screen Ultimate Cutscene Overlay
     if (this.cutscene.active) {
       this.cutscene.renderScreen(ctx, this.viewW, this.viewH);
     }
@@ -1309,6 +1628,7 @@ export class Game {
         this.cutscene.active ? 1 : 0,
         this.enemies.length,
         this.iceWalls.some((w) => w.active && !w.launched) ? 1 : 0,
+        this.player.skillLinkTimer > 0 ? 1 : 0,
         this.player.cryoCooldown > 0 ? this.player.cryoCooldown.toFixed(1) : '0',
         this.player.parryCooldown > 0 ? this.player.parryCooldown.toFixed(1) : '0',
         this.player.dashCooldown > 0 ? this.player.dashCooldown.toFixed(1) : '0',
@@ -1396,6 +1716,8 @@ export class Game {
         cryo: Number(this.player.cryoCooldown.toFixed(1)),
         cryoMax: this.player.cryoCooldownMax,
         cryoActive: standingIceWall,
+        skillLinkActive: this.player.skillLinkTimer > 0,
+        skillLinkLabel: getElementalMarkSpec(ch.id).linkShortLabel,
         ultimateReady: this.player.rage >= this.player.maxRage,
         awakenReady: !this.player.awakened && this.player.awakening >= this.player.maxAwakening,
         awakened: this.player.awakened,

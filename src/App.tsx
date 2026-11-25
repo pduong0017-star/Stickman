@@ -46,6 +46,8 @@ const INITIAL_HUD: HudSnapshot = {
     cryo: 0,
     cryoMax: DEFAULT_CHAR.specialCooldown,
     cryoActive: false,
+    skillLinkActive: false,
+    skillLinkLabel: 'PHÁ BĂNG',
     ultimateReady: false,
     awakenReady: false,
     awakened: false,
