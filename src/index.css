@@ -1,0 +1,144 @@
+@import "tailwindcss";
+
+@layer base {
+  :root {
+    --font-display: 'Barlow Condensed', system-ui, sans-serif;
+    --font-sans: 'Plus Jakarta Sans', system-ui, sans-serif;
+    --font-mono: 'JetBrains Mono', ui-monospace, monospace;
+    --font-kanji: 'Noto Serif JP', 'Yu Mincho', serif;
+  }
+
+  html,
+  body,
+  #root {
+    width: 100%;
+    height: 100%;
+    height: 100dvh;
+    margin: 0;
+    padding: 0;
+    overflow: hidden;
+    overscroll-behavior: none;
+    background-color: #090b10;
+    font-family: var(--font-sans);
+    touch-action: none;
+    user-select: none;
+    -webkit-user-select: none;
+    -webkit-touch-callout: none;
+    -webkit-tap-highlight-color: transparent;
+  }
+}
+
+.font-display {
+  font-family: var(--font-display);
+}
+
+.font-mono-num {
+  font-family: var(--font-mono);
+  font-variant-numeric: tabular-nums;
+}
+
+.hud-text-shadow {
+  text-shadow: 0 2px 6px rgba(0, 0, 0, 0.92), 0 0 2px rgba(0, 0, 0, 0.98);
+}
+
+.clip-slant {
+  clip-path: polygon(0 0, calc(100% - 12px) 0, 100% 100%, 12px 100%);
+}
+
+.clip-slant-left {
+  clip-path: polygon(0 0, 100% 0, calc(100% - 14px) 100%, 0 100%);
+}
+
+.clip-slant-right {
+  clip-path: polygon(14px 0, 100% 0, 100% 100%, 0 100%);
+}
+
+.clip-chamfer {
+  clip-path: polygon(12px 0, 100% 0, 100% calc(100% - 12px), calc(100% - 12px) 100%, 0 100%, 0 12px);
+}
+
+.safe-inset-hud {
+  padding-top: max(8px, env(safe-area-inset-top));
+  padding-right: max(12px, env(safe-area-inset-right));
+  padding-bottom: max(8px, env(safe-area-inset-bottom));
+  padding-left: max(12px, env(safe-area-inset-left));
+}
+
+.safe-inset-touch {
+  padding-right: max(12px, env(safe-area-inset-right));
+  padding-bottom: max(8px, env(safe-area-inset-bottom));
+  padding-left: max(12px, env(safe-area-inset-left));
+}
+
+/* Mobile Landscape Dedicated Layout (phones held horizontally: 320px - 520px height) */
+@media (max-height: 520px) {
+  .landscape-compact-hidden {
+    display: none !important;
+  }
+
+  .landscape-only-flex {
+    display: flex !important;
+  }
+
+  .landscape-title-shell {
+    padding-top: max(8px, env(safe-area-inset-top)) !important;
+    padding-bottom: max(8px, env(safe-area-inset-bottom)) !important;
+    padding-left: max(14px, env(safe-area-inset-left)) !important;
+    padding-right: max(14px, env(safe-area-inset-right)) !important;
+    gap: 0.35rem !important;
+  }
+
+  .landscape-title-wrap {
+    gap: 0.45rem !important;
+    max-width: min(52vw, 430px) !important;
+  }
+
+  .landscape-title-logo {
+    width: 176px !important;
+  }
+
+  .landscape-char-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+    gap: 0.35rem !important;
+  }
+
+  .landscape-char-card {
+    padding: 0.32rem 0.5rem !important;
+    min-height: 40px !important;
+  }
+
+  .landscape-title-modes {
+    grid-template-columns: repeat(3, minmax(0, 1fr)) !important;
+    max-width: 100% !important;
+    gap: 0.4rem !important;
+  }
+
+  .landscape-title-mode-btn {
+    padding: 0.42rem 0.55rem !important;
+    min-height: 38px !important;
+    font-size: 0.98rem !important;
+  }
+
+  .landscape-hud-top {
+    padding-top: max(5px, env(safe-area-inset-top)) !important;
+    padding-bottom: max(4px, env(safe-area-inset-bottom)) !important;
+  }
+
+  .landscape-hud-vitals {
+    width: 205px !important;
+    gap: 0.18rem !important;
+  }
+
+  .landscape-hud-boss {
+    width: 210px !important;
+  }
+
+  .landscape-hud-util-btn {
+    width: 32px !important;
+    height: 32px !important;
+  }
+
+  .landscape-combo-rank {
+    font-size: 2rem !important;
+  }
+}

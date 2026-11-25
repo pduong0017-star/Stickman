@@ -1,0 +1,8 @@
+{
+  "name": "SCARLET SHEATH",
+  "description": "Fast-paced 2D Anime Cyberpunk Stickman Hack-and-Slash and Boss Rush action game with procedural skeletal animation, Verlet scarf physics, Parry deflection, Cryo Crush, Scarlet Sheath cutscene, Elemental Awakening, and Web Audio synthesizer.",
+  "requestFramePermissions": [],
+  "majorCapabilities": [
+    "MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"
+  ]
+}
