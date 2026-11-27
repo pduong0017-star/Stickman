@@ -62,10 +62,70 @@ export const ELEMENTAL_MARK_SPECS: Record<CharacterId, ElementalMarkSpec> = {
     baseDetonateDamage: 32,
     maxStacks: 3,
   },
+  aether: {
+    id: 'aether',
+    kanji: '宙',
+    markName: 'TINH ẤN',
+    detonateCallout: 'TINH QUANG BẠO!',
+    linkArtName: 'CỘNG HƯỞNG TINH VÂN',
+    linkShortLabel: 'TINH BẠO',
+    primaryColor: '#e879f9',
+    secondaryColor: '#38bdf8',
+    baseDetonateDamage: 36,
+    maxStacks: 3,
+  },
+  valkyrie: {
+    id: 'valkyrie',
+    kanji: '聖',
+    markName: 'THÁNH ẤN',
+    detonateCallout: 'THÁNH QUANG PHÁN QUYẾT!',
+    linkArtName: 'THIÊN KÍCH PHÁN QUYẾT',
+    linkShortLabel: 'THÁNH QUANG',
+    primaryColor: '#fde047',
+    secondaryColor: '#f8fafc',
+    baseDetonateDamage: 37,
+    maxStacks: 3,
+  },
+  mirage: {
+    id: 'mirage',
+    kanji: '鏡',
+    markName: 'KÍNH ẤN',
+    detonateCallout: 'VỠ KÍNH HƯ KHÔNG!',
+    linkArtName: 'KÍNH GIỚI ĐOẠN KHÔNG',
+    linkShortLabel: 'KÍNH ẤN',
+    primaryColor: '#c084fc',
+    secondaryColor: '#e2e8f0',
+    baseDetonateDamage: 38,
+    maxStacks: 3,
+  },
+  chrono: {
+    id: 'chrono',
+    kanji: '時',
+    markName: 'THỜI ẤN',
+    detonateCallout: 'BÙNG NỔ THỜI GIAN!',
+    linkArtName: 'NHỊP ĐỒNG HỒ TRẢM',
+    linkShortLabel: 'THỜI ẤN',
+    primaryColor: '#2dd4bf',
+    secondaryColor: '#f59e0b',
+    baseDetonateDamage: 39,
+    maxStacks: 3,
+  },
+  mactien: {
+    id: 'mactien',
+    kanji: '静',
+    markName: 'TĨNH ẤN',
+    detonateCallout: 'PHÁ TĨNH ẤN!',
+    linkArtName: 'CHU SA PHONG ẤN',
+    linkShortLabel: 'TĨNH ẤN',
+    primaryColor: '#ef4444',
+    secondaryColor: '#2dd4bf',
+    baseDetonateDamage: 38,
+    maxStacks: 3,
+  },
 };
 
 export function getElementalMarkSpec(id: CharacterId): ElementalMarkSpec {
-  return ELEMENTAL_MARK_SPECS[id];
+  return ELEMENTAL_MARK_SPECS[id] ?? ELEMENTAL_MARK_SPECS.kuro;
 }
 
 /**
@@ -79,8 +139,8 @@ export function computeDetonationDamage(
 ): number {
   const clampedStacks = Math.max(1, Math.min(3, Math.floor(stacks)));
   const spec = ELEMENTAL_MARK_SPECS[id];
-  const stackScale = clampedStacks === 1 ? 1.0 : clampedStacks === 2 ? 1.65 : 2.45;
-  const awakenScale = awakened ? 1.35 : 1.0;
+  const stackScale = clampedStacks === 1 ? 1.0 : clampedStacks === 2 ? 1.6 : 2.3;
+  const awakenScale = awakened ? 1.24 : 1.0;
   return Math.round(spec.baseDetonateDamage * stackScale * awakenScale * damageMultiplier);
 }
 
@@ -93,8 +153,8 @@ export function computeOverdriveUltimateDamage(
   markStacks: number
 ): number {
   const clampedStacks = Math.max(0, Math.min(3, Math.floor(markStacks)));
-  const awakenMult = awakened ? 1.35 : 1.0;
-  const markMult = 1 + clampedStacks * 0.1;
+  const awakenMult = awakened ? 1.26 : 1.0;
+  const markMult = 1 + clampedStacks * 0.08;
   return Math.round(baseBossDamage * awakenMult * markMult);
 }
 
@@ -108,33 +168,57 @@ export function computeSynergyCooldownRefund(
   const count = Math.max(1, Math.min(4, Math.floor(detonatedCount)));
   if (id === 'raijin') {
     return {
-      specialRefund: 0.95 + (count - 1) * 0.3,
-      dashRefund: 0.45,
+      specialRefund: 0.65 + (count - 1) * 0.22,
+      dashRefund: 0.35,
       healAmount: 0,
-      rageBonus: 7 * count,
+      rageBonus: 5 * count,
     };
   }
   if (id === 'zero') {
     return {
-      specialRefund: 1.05 + (count - 1) * 0.25,
-      dashRefund: 0.48,
+      specialRefund: 0.72 + (count - 1) * 0.2,
+      dashRefund: 0.38,
       healAmount: 0,
-      rageBonus: 8 * count,
+      rageBonus: 5 * count,
     };
   }
   if (id === 'kagura') {
     return {
-      specialRefund: 0.55 + (count - 1) * 0.2,
-      dashRefund: 0.25,
-      healAmount: 8 + (count - 1) * 4,
+      specialRefund: 0.45 + (count - 1) * 0.16,
+      dashRefund: 0.22,
+      healAmount: 6 + (count - 1) * 3,
+      rageBonus: 4 * count,
+    };
+  }
+  if (id === 'mirage') {
+    return {
+      specialRefund: 0.68 + (count - 1) * 0.22,
+      dashRefund: 0.42,
+      healAmount: 0,
+      rageBonus: 6 * count,
+    };
+  }
+  if (id === 'chrono') {
+    return {
+      specialRefund: 0.75 + (count - 1) * 0.24,
+      dashRefund: 0.52 + (count - 1) * 0.1,
+      healAmount: 0,
+      rageBonus: 6 * count,
+    };
+  }
+  if (id === 'mactien') {
+    return {
+      specialRefund: 0.7 + (count - 1) * 0.22,
+      dashRefund: 0.38,
+      healAmount: 3 + (count - 1) * 2,
       rageBonus: 6 * count,
     };
   }
   // kuro
   return {
-    specialRefund: 0.65 + (count - 1) * 0.25,
-    dashRefund: 0.65,
+    specialRefund: 0.55 + (count - 1) * 0.2,
+    dashRefund: 0.48,
     healAmount: 0,
-    rageBonus: 9 * count,
+    rageBonus: 6 * count,
   };
 }

@@ -1,22 +1,41 @@
-import type { CharacterId, CharacterSkillMeta } from './types';
+import type { CharacterId, CharacterSkillMeta, SkinId, SkinRarity } from './types';
 
 export type CharacterWeaponKind =
   | 'katana'
+  | 'seraph_blade'
+  | 'void_blade'
   | 'volt_spear'
   | 'flame_nodachi'
-  | 'twin_daggers';
+  | 'twin_daggers'
+  | 'arcane_hands'
+  | 'valkyrie_glaive'
+  | 'mirror_shards'
+  | 'chrono_hand'
+  | 'ink_brush';
 
 export type CharacterAwakenedWeaponKind =
   | 'blood_greatsword'
+  | 'seraph_greatsword'
+  | 'void_greatsword'
   | 'thunder_halberd'
   | 'solar_greatblade'
-  | 'void_sabers';
+  | 'void_sabers'
+  | 'prismatic_hands'
+  | 'valkyrie_excalibur'
+  | 'void_prism_scythe'
+  | 'chrono_twin_hands'
+  | 'golden_ink_brush';
 
 export type CharacterSpecialKind =
   | 'cryo_wall'
   | 'thunder_blink'
   | 'magma_eruption'
-  | 'phantom_barrage';
+  | 'phantom_barrage'
+  | 'arcane_barrage'
+  | 'holy_judgment'
+  | 'mirror_fracture'
+  | 'temporal_echo'
+  | 'ink_seal';
 
 export interface CharacterDefinition {
   id: CharacterId;
@@ -31,12 +50,29 @@ export interface CharacterDefinition {
   accentColor: string;
   scarfPrimary: string;
   scarfHighlight: string;
-  auraStyle: 'purple' | 'cyan' | 'ember' | 'emerald';
-  awakenedAuraStyle: 'crimson' | 'gold' | 'ember' | 'emerald';
+  auraStyle: 'purple' | 'cyan' | 'ember' | 'emerald' | 'gold';
+  awakenedAuraStyle: 'crimson' | 'gold' | 'ember' | 'emerald' | 'purple' | 'cyan';
   weapon: CharacterWeaponKind;
   awakenedWeapon: CharacterAwakenedWeaponKind;
   hasSheath: boolean;
-  headGear: 'none' | 'volt_visor' | 'flame_band' | 'phantom_eyes';
+  headGear:
+    | 'none'
+    | 'volt_visor'
+    | 'flame_band'
+    | 'phantom_eyes'
+    | 'seraph_helm'
+    | 'void_helm'
+    | 'shogun_crest'
+    | 'cyber_visor'
+    | 'phoenix_crown'
+    | 'oni_horns'
+    | 'kitsune_mask'
+    | 'astral_hood'
+    | 'astral_halo'
+    | 'valkyrie_wings'
+    | 'prism_crown'
+    | 'chrono_gear'
+    | 'jade_hairpin';
   // Combat stats
   maxHp: number;
   moveSpeed: number;
@@ -64,7 +100,7 @@ export interface CharacterDefinition {
   slashColors: [string, string]; // [normal, heavy/awakened]
 }
 
-export const CHARACTER_ORDER: CharacterId[] = ['kuro', 'raijin', 'kagura', 'zero'];
+export const CHARACTER_ORDER: CharacterId[] = ['kuro', 'raijin', 'kagura', 'zero', 'aether', 'valkyrie', 'mirage', 'chrono', 'mactien'];
 
 export const CHARACTER_ROSTER: Record<CharacterId, CharacterDefinition> = {
   kuro: {
@@ -113,7 +149,7 @@ export const CHARACTER_ROSTER: Record<CharacterId, CharacterDefinition> = {
     ultimatePrimaryColor: '#dc2626',
     ultimateSecondaryColor: '#fde68a',
     ultimateBannerTitle: 'SCARLET SHEATH · 断',
-    ultimateBossDamage: 225,
+    ultimateBossDamage: 185,
     awakeningBannerText: 'THỨC TỈNH: HUYẾT KIẾM!',
     awakeningWaveColor: '#ef4444',
     awakeningLifestealOnKill: 0,
@@ -165,7 +201,7 @@ export const CHARACTER_ROSTER: Record<CharacterId, CharacterDefinition> = {
     ultimatePrimaryColor: '#0284c7',
     ultimateSecondaryColor: '#fef08a',
     ultimateBannerTitle: 'VOLT JUDGMENT · 雷',
-    ultimateBossDamage: 215,
+    ultimateBossDamage: 175,
     awakeningBannerText: 'THỨC TỈNH: LÔI THẦN!',
     awakeningWaveColor: '#38bdf8',
     awakeningLifestealOnKill: 0,
@@ -192,7 +228,7 @@ export const CHARACTER_ROSTER: Record<CharacterId, CharacterDefinition> = {
     maxHp: 175,
     moveSpeed: 415,
     awakenedSpeed: 490,
-    damageMultiplier: 1.24,
+    damageMultiplier: 1.16,
     attackSpeedMultiplier: 1.08,
     reachBonus: 16,
     maxJumps: 2,
@@ -209,7 +245,7 @@ export const CHARACTER_ROSTER: Record<CharacterId, CharacterDefinition> = {
       ultimateName: 'VIÊM NGỤC',
       ultimateFullName: 'SOLAR INFERNO',
       ultimateKanji: '炎',
-      ultimateDesc: 'Nhật Thực Phượng Hoàng thiêu rụi màn hình, để lại cột lửa & hồi 35 HP',
+      ultimateDesc: 'Nhật Thực Phượng Hoàng thiêu rụi màn hình, để lại cột lửa & hồi 24 HP',
       awakenName: 'VIÊM ĐẾ',
       awakenDesc: 'Mọc cánh lửa Phượng Hoàng, chém nổ dung nham & hút máu khi hạ địch',
     },
@@ -217,10 +253,10 @@ export const CHARACTER_ROSTER: Record<CharacterId, CharacterDefinition> = {
     ultimatePrimaryColor: '#ea580c',
     ultimateSecondaryColor: '#fef08a',
     ultimateBannerTitle: 'SOLAR INFERNO · 炎',
-    ultimateBossDamage: 275,
+    ultimateBossDamage: 215,
     awakeningBannerText: 'THỨC TỈNH: VIÊM ĐẾ!',
     awakeningWaveColor: '#f97316',
-    awakeningLifestealOnKill: 14,
+    awakeningLifestealOnKill: 8,
     slashColors: ['#fb923c', '#facc15'],
   },
   zero: {
@@ -269,19 +305,923 @@ export const CHARACTER_ROSTER: Record<CharacterId, CharacterDefinition> = {
     ultimatePrimaryColor: '#059669',
     ultimateSecondaryColor: '#d1fae5',
     ultimateBannerTitle: 'PHANTOM ECLIPSE · 影',
-    ultimateBossDamage: 220,
+    ultimateBossDamage: 180,
     awakeningBannerText: 'THỨC TỈNH: ẢNH VƯƠNG!',
     awakeningWaveColor: '#10b981',
     awakeningLifestealOnKill: 0,
     slashColors: ['#34d399', '#a7f3d0'],
   },
+  aether: {
+    id: 'aether',
+    name: 'AETHER',
+    codename: 'Đại Pháp Sư · VIP',
+    archetype: 'Pháp Sư · Cận Chiến',
+    summary: 'Pháp sư cận chiến độc quyền VIP tung chưởng lực ma pháp bằng tay không với Ma Pháp Trận và Thiên Hà Hủy Diệt.',
+    bodyColor: '#4c1d95',
+    awakenedBodyColor: '#c026d3',
+    glowColor: '#e879f9',
+    accentColor: '#f472b6',
+    scarfPrimary: '#7c3aed',
+    scarfHighlight: '#38bdf8',
+    auraStyle: 'purple',
+    awakenedAuraStyle: 'gold',
+    weapon: 'arcane_hands',
+    awakenedWeapon: 'prismatic_hands',
+    hasSheath: false,
+    headGear: 'astral_halo',
+    maxHp: 215,
+    moveSpeed: 495,
+    awakenedSpeed: 585,
+    damageMultiplier: 1.14,
+    attackSpeedMultiplier: 0.84,
+    reachBonus: 36,
+    maxJumps: 3,
+    dashCooldown: 0.4,
+    parryWindow: 0.34,
+    specialCooldown: 2.0,
+    specialKind: 'arcane_barrage',
+    skills: {
+      basicName: 'TINH VÂN CHƯỞNG',
+      specialName: 'MA PHÁP TRẬN',
+      specialActiveName: 'TINH QUANG BẠO',
+      specialDesc: 'Phóng cầu ma pháp tầm trung từ hai tay kèm vòng ma trận đẩy lùi kẻ địch!',
+      synergyHint: 'Liên chiêu: [U] Ma Pháp Trận → [J] Áp sát tung Liên Hoàn Chưởng Tinh Vân!',
+      ultimateName: 'THIÊN HÀ',
+      ultimateFullName: 'THIÊN HÀ HỦY DIỆT',
+      ultimateKanji: '宙',
+      ultimateDesc: 'Triệu hồi Đại Ma Pháp Trận xoay chuyển và giáng Siêu Tân Tinh toàn bản đồ',
+      awakenName: 'PHÁP THẦN',
+      awakenDesc: 'Thức tỉnh Pháp Thần: 6 cầu tinh tú hộ thể, Mandala vàng & hồi máu khi hạ địch',
+    },
+    ultimateKanji: '宙',
+    ultimatePrimaryColor: '#c026d3',
+    ultimateSecondaryColor: '#38bdf8',
+    ultimateBannerTitle: 'THIÊN HÀ HỦY DIỆT · 宙',
+    ultimateBossDamage: 205,
+    awakeningBannerText: 'THỨC TỈNH: PHÁP THẦN GIÁNG LÂM!',
+    awakeningWaveColor: '#e879f9',
+    awakeningLifestealOnKill: 10,
+    slashColors: ['#e879f9', '#38bdf8'],
+  },
+  valkyrie: {
+    id: 'valkyrie',
+    name: 'VALKYRIE',
+    codename: 'Thánh Quang Chiến Nữ',
+    archetype: 'Thánh Quang · Hồi Phục',
+    summary: 'Nữ chiến thần cánh ánh sáng với Thánh Kiếm tầm rộng, sóng Thánh Quang & khả năng tự hồi phục.',
+    bodyColor: '#f8fafc',
+    awakenedBodyColor: '#fef08a',
+    glowColor: '#facc15',
+    accentColor: '#fde047',
+    scarfPrimary: '#d97706',
+    scarfHighlight: '#fef9c3',
+    auraStyle: 'gold',
+    awakenedAuraStyle: 'gold',
+    weapon: 'valkyrie_glaive',
+    awakenedWeapon: 'valkyrie_excalibur',
+    hasSheath: false,
+    headGear: 'valkyrie_wings',
+    maxHp: 165,
+    moveSpeed: 485,
+    awakenedSpeed: 565,
+    damageMultiplier: 1.05,
+    attackSpeedMultiplier: 0.92,
+    reachBonus: 24,
+    maxJumps: 3,
+    dashCooldown: 0.5,
+    parryWindow: 0.26,
+    specialCooldown: 2.5,
+    specialKind: 'holy_judgment',
+    skills: {
+      basicName: 'THÁNH KIẾM',
+      specialName: 'THÁNH QUANG TRẬN',
+      specialActiveName: 'PHÁN QUYẾT',
+      specialDesc: 'Phóng song kiếm khí Thánh Quang khắc ấn 聖 & tự hồi +8 HP',
+      synergyHint: 'Liên chiêu: [U] Thánh Quang Trận → [J] Thiên Kích kích nổ toàn bộ Thánh Ấn!',
+      ultimateName: 'THÁNH ĐÌNH',
+      ultimateFullName: 'SOLAR ASCENSION',
+      ultimateKanji: '聖',
+      ultimateDesc: 'Mở cánh Thiên Thần giáng cột Thánh Quang thanh tẩy toàn bộ kẻ địch',
+      awakenName: 'CHIẾN THẦN',
+      awakenDesc: 'Thức tỉnh Chiến Thần Hoàng Kim: tốc độ siêu việt & hút máu khi hạ địch',
+    },
+    ultimateKanji: '聖',
+    ultimatePrimaryColor: '#d97706',
+    ultimateSecondaryColor: '#fef9c3',
+    ultimateBannerTitle: 'SOLAR ASCENSION · 聖',
+    ultimateBossDamage: 195,
+    awakeningBannerText: 'THỨC TỈNH: THÁNH QUANG CHIẾN THẦN!',
+    awakeningWaveColor: '#fde047',
+    awakeningLifestealOnKill: 9,
+    slashColors: ['#facc15', '#fef08a'],
+  },
+  mirage: {
+    id: 'mirage',
+    name: 'MIRAGE',
+    codename: 'Ảnh Kính Hư Không',
+    archetype: 'Kính Giới · Phản Xạ',
+    summary: 'Bậc thầy gương vỡ hư không: triệu hồi Cổng Gương phản xạ đạn địch, cắt xuyên không gian và kích nổ Vạn Kính.',
+    bodyColor: '#1e1b4b',
+    awakenedBodyColor: '#312e81',
+    glowColor: '#c084fc',
+    accentColor: '#e2e8f0',
+    scarfPrimary: '#6366f1',
+    scarfHighlight: '#f1f5f9',
+    auraStyle: 'purple',
+    awakenedAuraStyle: 'purple',
+    weapon: 'mirror_shards',
+    awakenedWeapon: 'void_prism_scythe',
+    hasSheath: false,
+    headGear: 'prism_crown',
+    maxHp: 180,
+    moveSpeed: 505,
+    awakenedSpeed: 595,
+    damageMultiplier: 1.12,
+    attackSpeedMultiplier: 0.84,
+    reachBonus: 26,
+    maxJumps: 3,
+    dashCooldown: 0.36,
+    parryWindow: 0.36,
+    specialCooldown: 2.6,
+    specialKind: 'mirror_fracture',
+    skills: {
+      basicName: 'MẢNH KÍNH CẮT',
+      specialName: 'CỔNG GƯƠNG HƯ KHÔNG',
+      specialActiveName: 'VỠ KÍNH PHẢN XẠ',
+      specialDesc: 'Mở Cổng Gương Hư Không phản xạ đạn địch, liên tục phát sóng mảnh kính vỡ và nổ tung khi tan vỡ',
+      synergyHint: 'Liên chiêu: [U] Cổng Gương → [J] Trảm phá gương kích nổ Kính Ấn!',
+      ultimateName: 'VẠN KÍNH',
+      ultimateFullName: 'VẠN KÍNH PHÁ HƯ KHÔNG',
+      ultimateKanji: '鏡',
+      ultimateDesc: 'Làm nứt vỡ toàn bộ màn hình thành hàng chục mảnh gương rồi sụp đổ không gian nghiền nát kẻ địch',
+      awakenName: 'KÍNH GIỚI',
+      awakenDesc: 'Thức tỉnh Hư Không Kính Giới: triệu hồi 2 Cổng Gương song song & Lưỡi Hái Lăng Kính',
+    },
+    ultimateKanji: '鏡',
+    ultimatePrimaryColor: '#a855f7',
+    ultimateSecondaryColor: '#e2e8f0',
+    ultimateBannerTitle: 'VẠN KÍNH PHÁ HƯ KHÔNG · 鏡',
+    ultimateBossDamage: 205,
+    awakeningBannerText: 'THỨC TỈNH: HƯ KHÔNG KÍNH GIỚI!',
+    awakeningWaveColor: '#c084fc',
+    awakeningLifestealOnKill: 7,
+    slashColors: ['#e2e8f0', '#a855f7'],
+  },
+  chrono: {
+    id: 'chrono',
+    name: 'CHRONO',
+    codename: 'Chủ Nhân Thời Gian',
+    archetype: 'Thời Gian · Luân Bàn',
+    summary: 'Bậc thầy Luân Bàn Thời Gian: quét vòng, phóng luân xoay, búng tay kích nổ Mặt Đồng Hồ & Ngưng Đọng Toàn Cầu 3.5s.',
+    bodyColor: '#0f766e',
+    awakenedBodyColor: '#b45309',
+    glowColor: '#2dd4bf',
+    accentColor: '#f59e0b',
+    scarfPrimary: '#115e59',
+    scarfHighlight: '#fde047',
+    auraStyle: 'cyan',
+    awakenedAuraStyle: 'gold',
+    weapon: 'chrono_hand',
+    awakenedWeapon: 'chrono_twin_hands',
+    hasSheath: false,
+    headGear: 'chrono_gear',
+    maxHp: 190,
+    moveSpeed: 500,
+    awakenedSpeed: 590,
+    damageMultiplier: 1.12,
+    attackSpeedMultiplier: 0.85,
+    reachBonus: 28,
+    maxJumps: 2,
+    dashCooldown: 0.38,
+    parryWindow: 0.34,
+    specialCooldown: 2.8,
+    specialKind: 'temporal_echo',
+    skills: {
+      basicName: 'LUÂN BÀN THỜI GIAN',
+      specialName: 'PHÂN THÂN QUÁ KHỨ',
+      specialActiveName: 'NHỊP THỜI GIAN',
+      specialDesc: 'Triệu hồi Bóng Quá Khứ tự động lặp lại chuỗi đòn Luân Bàn của Chrono trễ 0.4s để đánh bồi gấp đôi',
+      synergyHint: 'Liên chiêu: [U] Phân Thân Quá Khứ → [J] Quét / Phóng / Kích nổ Mặt Đồng Hồ & Thời Ấn!',
+      ultimateName: 'NGƯNG ĐỌNG',
+      ultimateFullName: 'NGƯNG ĐỌNG TOÀN CẦU',
+      ultimateKanji: '時',
+      ultimateDesc: 'Đóng băng toàn bộ quái & đạn trong 3.5s, tự do tích dồn sát thương rồi búng tay kích nổ',
+      awakenName: 'SONG LUÂN THỜI GIAN',
+      awakenDesc: 'Thức tỉnh Song Luân Bàn quay ngược chiều: tốc độ siêu việt & hồi máu khi hạ địch',
+    },
+    ultimateKanji: '時',
+    ultimatePrimaryColor: '#2dd4bf',
+    ultimateSecondaryColor: '#f59e0b',
+    ultimateBannerTitle: 'NGƯNG ĐỌNG TOÀN CẦU · 時',
+    ultimateBossDamage: 205,
+    awakeningBannerText: 'THỨC TỈNH: CHÚA TỂ THỜI GIAN!',
+    awakeningWaveColor: '#2dd4bf',
+    awakeningLifestealOnKill: 7,
+    slashColors: ['#2dd4bf', '#f59e0b'],
+  },
+  mactien: {
+    id: 'mactien',
+    name: 'MẶC TIÊN',
+    codename: 'Họa Sư Thủy Mặc · Đại Nho',
+    archetype: 'Khống Chế · Tầm Trung',
+    summary: 'Đại Nho cầm Cự Bút Thủy Mặc: vẩy mực thư pháp tầm rộng, đóng Tĩnh Tự Ấn ("静") giữ chân kẻ địch & trải tranh Thiên Hạ Nghênh Xuân ("春").',
+    bodyColor: '#1a1d24',
+    awakenedBodyColor: '#78350f',
+    glowColor: '#2dd4bf',
+    accentColor: '#ef4444',
+    scarfPrimary: '#1a1d24',
+    scarfHighlight: '#f4f1ea',
+    auraStyle: 'cyan',
+    awakenedAuraStyle: 'gold',
+    weapon: 'ink_brush',
+    awakenedWeapon: 'golden_ink_brush',
+    hasSheath: false,
+    headGear: 'jade_hairpin',
+    maxHp: 196,
+    moveSpeed: 485,
+    awakenedSpeed: 570,
+    damageMultiplier: 1.08,
+    attackSpeedMultiplier: 0.9,
+    reachBonus: 34,
+    maxJumps: 2,
+    dashCooldown: 0.42,
+    parryWindow: 0.34,
+    specialCooldown: 3.0,
+    specialKind: 'ink_seal',
+    skills: {
+      basicName: 'THỦY MẶC CỰ BÚT',
+      specialName: 'TĨNH TỰ ẤN',
+      specialActiveName: 'KIM MẶC PHONG ẤN',
+      specialDesc: 'Triệu hồi ấn chương vuông khổng lồ khắc chữ "静" giữ chân & làm chậm mạnh mục tiêu 1.1s rồi phát nổ sóng mực',
+      synergyHint: 'Liên chiêu: [U] Tĩnh Tự Ấn → [J] Đóng Ấn Triện Đỏ ("静") & Quét Kim Mặc diện rộng!',
+      ultimateName: 'NGHÊNH XUÂN',
+      ultimateFullName: 'THIÊN HẠ NGHÊNH XUÂN',
+      ultimateKanji: '春',
+      ultimateDesc: 'Trải cuộn tranh thủy mặc núi sông, hạ bút viết đại tự "春" vàng kim kèm gió xuân & rồng mực quét ngang đấu trường',
+      awakenName: 'KIM MẶC TIÊN BÚT',
+      awakenDesc: 'Thức tỉnh Kim Mặc vàng kim rực sáng: mở rộng tầm quét nét bút & hồi máu khi hạ địch',
+    },
+    ultimateKanji: '春',
+    ultimatePrimaryColor: '#f59e0b',
+    ultimateSecondaryColor: '#2dd4bf',
+    ultimateBannerTitle: 'THIÊN HẠ NGHÊNH XUÂN · 春',
+    ultimateBossDamage: 210,
+    awakeningBannerText: 'THỨC TỈNH: KIM MẶC TIÊN BÚT!',
+    awakeningWaveColor: '#f59e0b',
+    awakeningLifestealOnKill: 7,
+    slashColors: ['#2dd4bf', '#f59e0b'],
+  },
 };
 
-export function getCharacterDef(id: string | null | undefined): CharacterDefinition {
-  if (id && id in CHARACTER_ROSTER) {
-    return CHARACTER_ROSTER[id as CharacterId];
+export interface CharacterSkinDefinition {
+  id: SkinId;
+  name: string;
+  subtitle: string;
+  badgeColor: string;
+  rarity?: SkinRarity;
+  overrides: Partial<Omit<CharacterDefinition, 'id' | 'skills'>> & {
+    skills?: Partial<CharacterSkillMeta>;
+  };
+}
+
+export const CHARACTER_SKINS: Partial<Record<CharacterId, CharacterSkinDefinition[]>> = {
+  kuro: [
+    {
+      id: 'default',
+      name: 'Mặc định',
+      subtitle: 'Hắc Kiếm Sĩ',
+      badgeColor: '#a855f7',
+      overrides: {},
+    },
+    {
+      id: 'radiant_seraph',
+      name: 'Radiant Seraph',
+      subtitle: '炽天使 · Đại Thiên Thần',
+      badgeColor: '#facc15',
+      overrides: {
+        codename: 'Đại Thiên Thần',
+        bodyColor: '#f1f5f9',
+        awakenedBodyColor: '#fef9c3',
+        glowColor: '#facc15',
+        accentColor: '#fbbf24',
+        scarfPrimary: '#fef3c7',
+        scarfHighlight: '#ffffff',
+        auraStyle: 'gold',
+        awakenedAuraStyle: 'gold',
+        weapon: 'seraph_blade',
+        awakenedWeapon: 'seraph_greatsword',
+        headGear: 'seraph_helm',
+        ultimateKanji: '光',
+        ultimatePrimaryColor: '#f59e0b',
+        ultimateSecondaryColor: '#fef9c3',
+        ultimateBannerTitle: 'THIÊN LONG SCARLET · 光',
+        awakeningBannerText: 'THỨC TỈNH: ĐẠI THIÊN THẦN!',
+        awakeningWaveColor: '#facc15',
+        slashColors: ['#fde047', '#f59e0b'],
+        skills: {
+          specialName: 'VẠN KIẾM QUANG',
+          specialActiveName: 'THÁNH KIẾM TRẬN',
+          specialDesc: 'Gọi trận Vạn Kiếm Quang chắn đạn — nối [J] hoặc [L]+[J] để phóng bão Thánh Kiếm',
+          synergyHint: 'Liên chiêu: [U] Vạn Kiếm Quang → [L]+[J] Cường hóa & Kích nổ Thánh Quang!',
+          ultimateName: 'THIÊN LONG',
+          ultimateFullName: 'THIÊN LONG SCARLET',
+          ultimateKanji: '光',
+          ultimateDesc: 'Triệu hồi cột Thánh Quang & Thiên Long vàng kim giáng xuống hủy diệt',
+          awakenName: 'ĐẠI THIÊN THẦN',
+          awakenDesc: 'Mở rộng 6 cánh Thiên Thần rực sáng, chém ra sóng kiếm Thánh Quang',
+        },
+      },
+    },
+    {
+      id: 'void_walker',
+      name: 'Void Walker',
+      subtitle: '虚空行者 · Hư Không Hành Giả',
+      badgeColor: '#c084fc',
+      overrides: {
+        codename: 'Hư Không Hành Giả',
+        bodyColor: '#1e1b4b',
+        awakenedBodyColor: '#312e81',
+        glowColor: '#a855f7',
+        accentColor: '#c084fc',
+        scarfPrimary: '#581c87',
+        scarfHighlight: '#d8b4fe',
+        auraStyle: 'purple',
+        awakenedAuraStyle: 'purple',
+        weapon: 'void_blade',
+        awakenedWeapon: 'void_greatsword',
+        headGear: 'void_helm',
+        ultimateKanji: '虚',
+        ultimatePrimaryColor: '#7e22ce',
+        ultimateSecondaryColor: '#e9d5ff',
+        ultimateBannerTitle: 'HƯ KHÔNG LONG · 虚',
+        awakeningBannerText: 'THỨC TỈNH: HƯ KHÔNG CHÚA TỂ!',
+        awakeningWaveColor: '#a855f7',
+        slashColors: ['#a855f7', '#e879f9'],
+        skills: {
+          specialName: 'HƯ KHÔNG KIẾM',
+          specialActiveName: 'XÉ HƯ KHÔNG',
+          specialDesc: 'Triệu hồi pha lê Hư Không chắn đạn — nối [J] hoặc [L]+[J] để phóng bão Hư Không',
+          synergyHint: 'Liên chiêu: [U] Hư Không Kiếm → [L]+[J] Cường hóa & Kích nổ Vết Nứt!',
+          ultimateName: 'HƯ KHÔNG LONG',
+          ultimateFullName: 'HƯ KHÔNG LONG · 虚',
+          ultimateKanji: '虚',
+          ultimateDesc: 'Mở vòng xoáy Hố Đen & Hư Không Long cắn nuốt toàn bộ chiến trường',
+          awakenName: 'HƯ KHÔNG CHÚA TỂ',
+          awakenDesc: 'Biến hình Ascended State với áo choàng tinh vân tím & sóng Hư Không',
+        },
+      },
+    },
+    {
+      id: 'eclipse_ronin',
+      name: 'Eclipse Ronin',
+      subtitle: '日食浪人 · Nhật Thực Lãng Khách',
+      badgeColor: '#f97316',
+      rarity: 'mythic',
+      overrides: {
+        codename: 'Nhật Thực Lãng Khách',
+        bodyColor: '#09090b',
+        awakenedBodyColor: '#450a0a',
+        glowColor: '#f97316',
+        accentColor: '#fb923c',
+        scarfPrimary: '#dc2626',
+        scarfHighlight: '#fde047',
+        auraStyle: 'ember',
+        awakenedAuraStyle: 'crimson',
+        weapon: 'katana',
+        awakenedWeapon: 'blood_greatsword',
+        headGear: 'oni_horns',
+        ultimateKanji: '蝕',
+        ultimatePrimaryColor: '#b91c1c',
+        ultimateSecondaryColor: '#facc15',
+        ultimateBannerTitle: 'NHẬT THỰC ĐOẠN KHÔNG · 蝕',
+        awakeningBannerText: 'THỨC TỈNH: NHẬT THỰC LÃNG KHÁCH!',
+        awakeningWaveColor: '#f97316',
+        slashColors: ['#f97316', '#dc2626'],
+        skills: {
+          specialName: 'NHẬT THỰC TƯỜNG',
+          specialActiveName: 'NHẬT THỰC TRẢM',
+          ultimateName: 'NHẬT THỰC',
+          ultimateFullName: 'NHẬT THỰC ĐOẠN KHÔNG',
+          ultimateKanji: '蝕',
+          awakenName: 'NHẬT THỰC',
+        },
+      },
+    },
+  ],
+  raijin: [
+    {
+      id: 'default',
+      name: 'Mặc định',
+      subtitle: 'Lôi Thương',
+      badgeColor: '#38bdf8',
+      overrides: {},
+    },
+    {
+      id: 'storm_shogun',
+      name: 'Storm Shogun',
+      subtitle: '雷将軍 · Lôi Thần Tướng Quân',
+      badgeColor: '#facc15',
+      overrides: {
+        codename: 'Lôi Thần Tướng Quân',
+        bodyColor: '#1d4ed8',
+        awakenedBodyColor: '#60a5fa',
+        glowColor: '#facc15',
+        accentColor: '#fbbf24',
+        scarfPrimary: '#f8fafc',
+        scarfHighlight: '#fde047',
+        auraStyle: 'gold',
+        awakenedAuraStyle: 'gold',
+        headGear: 'shogun_crest',
+        ultimateKanji: '霆',
+        ultimatePrimaryColor: '#2563eb',
+        ultimateSecondaryColor: '#fef08a',
+        ultimateBannerTitle: 'THIÊN LÔI TƯỚNG QUÂN · 霆',
+        awakeningBannerText: 'THỨC TỈNH: LÔI THẦN TƯỚNG QUÂN!',
+        awakeningWaveColor: '#facc15',
+        slashColors: ['#60a5fa', '#fde047'],
+        skills: {
+          specialName: 'TƯỚNG LÔI THIỂM',
+          ultimateName: 'THIÊN ĐÌNH LÔI',
+          ultimateFullName: 'THIÊN LÔI TƯỚNG QUÂN',
+          ultimateKanji: '霆',
+          awakenName: 'LÔI TƯỚNG QUÂN',
+        },
+      },
+    },
+    {
+      id: 'cyber_valkyrie',
+      name: 'Cyber Overdrive',
+      subtitle: '電脳戦神 · Chiến Thần Cơ Giới',
+      badgeColor: '#e879f9',
+      overrides: {
+        codename: 'Chiến Thần Cơ Giới',
+        bodyColor: '#0f172a',
+        awakenedBodyColor: '#1e1b4b',
+        glowColor: '#e879f9',
+        accentColor: '#f0abfc',
+        scarfPrimary: '#0891b2',
+        scarfHighlight: '#67e8f9',
+        auraStyle: 'cyan',
+        awakenedAuraStyle: 'purple',
+        headGear: 'cyber_visor',
+        ultimateKanji: '電',
+        ultimatePrimaryColor: '#c026d3',
+        ultimateSecondaryColor: '#67e8f9',
+        ultimateBannerTitle: 'XUNG KÍCH LƯỢNG TỬ · 電',
+        awakeningBannerText: 'THỨC TỈNH: OVERDRIVE MODE!',
+        awakeningWaveColor: '#e879f9',
+        slashColors: ['#22d3ee', '#e879f9'],
+        skills: {
+          specialName: 'XUNG LƯỢNG TỬ',
+          ultimateName: 'BÃO PLASMA',
+          ultimateFullName: 'XUNG KÍCH LƯỢNG TỬ',
+          ultimateKanji: '電',
+          awakenName: 'OVERDRIVE',
+        },
+      },
+    },
+  ],
+  kagura: [
+    {
+      id: 'default',
+      name: 'Mặc định',
+      subtitle: 'Hỏa Diệm Đao',
+      badgeColor: '#fb7185',
+      overrides: {},
+    },
+    {
+      id: 'solar_phoenix',
+      name: 'Solar Phoenix',
+      subtitle: '不死鳥 · Phượng Hoàng Bất Tử',
+      badgeColor: '#facc15',
+      overrides: {
+        codename: 'Phượng Hoàng Bất Tử',
+        bodyColor: '#b91c1c',
+        awakenedBodyColor: '#f59e0b',
+        glowColor: '#facc15',
+        accentColor: '#fde047',
+        scarfPrimary: '#fef3c7',
+        scarfHighlight: '#ffffff',
+        auraStyle: 'gold',
+        awakenedAuraStyle: 'gold',
+        headGear: 'phoenix_crown',
+        ultimateKanji: '鳳',
+        ultimatePrimaryColor: '#ea580c',
+        ultimateSecondaryColor: '#fef9c3',
+        ultimateBannerTitle: 'PHƯỢNG HOÀNG NIẾT BÀN · 鳳',
+        awakeningBannerText: 'THỨC TỈNH: THÁI DƯƠNG PHƯỢNG HOÀNG!',
+        awakeningWaveColor: '#facc15',
+        slashColors: ['#fde047', '#f97316'],
+        skills: {
+          specialName: 'PHƯỢNG VŨ',
+          ultimateName: 'NIẾT BÀN',
+          ultimateFullName: 'PHƯỢNG HOÀNG NIẾT BÀN',
+          ultimateKanji: '鳳',
+          awakenName: 'PHƯỢNG HOÀNG',
+        },
+      },
+    },
+    {
+      id: 'frost_empress',
+      name: 'Frostfire Oni',
+      subtitle: '蒼炎鬼 · Băng Hỏa Ma Đế',
+      badgeColor: '#22d3ee',
+      overrides: {
+        codename: 'Băng Hỏa Ma Đế',
+        bodyColor: '#1e293b',
+        awakenedBodyColor: '#0e7490',
+        glowColor: '#22d3ee',
+        accentColor: '#38bdf8',
+        scarfPrimary: '#3b0764',
+        scarfHighlight: '#67e8f9',
+        auraStyle: 'cyan',
+        awakenedAuraStyle: 'purple',
+        headGear: 'oni_horns',
+        ultimateKanji: '蒼',
+        ultimatePrimaryColor: '#0284c7',
+        ultimateSecondaryColor: '#e0f2fe',
+        ultimateBannerTitle: 'THƯƠNG VIÊM BĂNG NGỤC · 蒼',
+        awakeningBannerText: 'THỨC TỈNH: BĂNG HỎA MA ĐẾ!',
+        awakeningWaveColor: '#22d3ee',
+        slashColors: ['#38bdf8', '#c084fc'],
+        skills: {
+          specialName: 'THƯƠNG VIÊM',
+          ultimateName: 'BĂNG HỎA NGỤC',
+          ultimateFullName: 'THƯƠNG VIÊM BĂNG NGỤC',
+          ultimateKanji: '蒼',
+          awakenName: 'MA ĐẾ',
+        },
+      },
+    },
+  ],
+  zero: [
+    {
+      id: 'default',
+      name: 'Mặc định',
+      subtitle: 'Ảnh Sát Thủ',
+      badgeColor: '#34d399',
+      overrides: {},
+    },
+    {
+      id: 'blood_moon',
+      name: 'Blood Moon',
+      subtitle: '血月 · Huyết Nguyệt Sát Thần',
+      badgeColor: '#f43f5e',
+      overrides: {
+        codename: 'Huyết Nguyệt Sát Thần',
+        bodyColor: '#18181b',
+        awakenedBodyColor: '#4c0519',
+        glowColor: '#f43f5e',
+        accentColor: '#fb7185',
+        scarfPrimary: '#be123c',
+        scarfHighlight: '#fecdd3',
+        auraStyle: 'ember',
+        awakenedAuraStyle: 'crimson',
+        headGear: 'kitsune_mask',
+        ultimateKanji: '血',
+        ultimatePrimaryColor: '#e11d48',
+        ultimateSecondaryColor: '#ffe4e6',
+        ultimateBannerTitle: 'HUYẾT NGUYỆT VÔ ẢNH · 血',
+        awakeningBannerText: 'THỨC TỈNH: HUYẾT NGUYỆT SÁT THẦN!',
+        awakeningWaveColor: '#f43f5e',
+        slashColors: ['#f43f5e', '#fecdd3'],
+        skills: {
+          specialName: 'HUYẾT PHI ĐAO',
+          ultimateName: 'HUYẾT NGUYỆT',
+          ultimateFullName: 'HUYẾT NGUYỆT VÔ ẢNH',
+          ultimateKanji: '血',
+          awakenName: 'SÁT THẦN',
+        },
+      },
+    },
+    {
+      id: 'astral_phantom',
+      name: 'Astral Phantom',
+      subtitle: '星雲 · Tinh Vân Ảo Ảnh',
+      badgeColor: '#38bdf8',
+      overrides: {
+        codename: 'Tinh Vân Ảo Ảnh',
+        bodyColor: '#1e1b4b',
+        awakenedBodyColor: '#312e81',
+        glowColor: '#38bdf8',
+        accentColor: '#7dd3fc',
+        scarfPrimary: '#4338ca',
+        scarfHighlight: '#fde047',
+        auraStyle: 'purple',
+        awakenedAuraStyle: 'cyan',
+        headGear: 'astral_hood',
+        ultimateKanji: '星',
+        ultimatePrimaryColor: '#4f46e5',
+        ultimateSecondaryColor: '#fef08a',
+        ultimateBannerTitle: 'TINH TÚ VÔ ẢNH · 星',
+        awakeningBannerText: 'THỨC TỈNH: TINH VÂN CHÚA TỂ!',
+        awakeningWaveColor: '#38bdf8',
+        slashColors: ['#818cf8', '#fde047'],
+        skills: {
+          specialName: 'TINH PHI ĐAO',
+          ultimateName: 'TINH TÚ TRẢM',
+          ultimateFullName: 'TINH TÚ VÔ ẢNH',
+          ultimateKanji: '星',
+          awakenName: 'TINH VÂN',
+        },
+      },
+    },
+  ],
+  aether: [
+    {
+      id: 'default',
+      name: 'Mặc định',
+      subtitle: 'Đại Pháp Sư · Tinh Vân',
+      badgeColor: '#e879f9',
+      overrides: {},
+    },
+    {
+      id: 'prismatic_archon',
+      name: 'VIP · Cầu Vồng Tinh Tú',
+      subtitle: '虹 · Độc Quyền Pháp Thần Đa Sắc',
+      badgeColor: '#f43f5e',
+      overrides: {
+        codename: 'Pháp Thần Đa Sắc · VIP',
+        bodyColor: '#1e1b4b',
+        awakenedBodyColor: '#312e81',
+        glowColor: '#e879f9',
+        accentColor: '#38bdf8',
+        scarfPrimary: '#7c3aed',
+        scarfHighlight: '#fde047',
+        auraStyle: 'gold',
+        awakenedAuraStyle: 'cyan',
+        headGear: 'astral_halo',
+        ultimateKanji: '虹',
+        ultimatePrimaryColor: '#ec4899',
+        ultimateSecondaryColor: '#fde047',
+        ultimateBannerTitle: 'CẦU VỒNG TINH TÚ · 虹',
+        awakeningBannerText: 'THỨC TỈNH VIP: THẦN CẦU VỒNG!',
+        awakeningWaveColor: '#38bdf8',
+        slashColors: ['#f472b6', '#fde047'],
+        skills: {
+          basicName: 'CẦU VỒNG CHƯỞNG',
+          specialName: 'THẤT SẮC TRẬN',
+          ultimateName: 'SIÊU TÂN TINH',
+          ultimateFullName: 'CẦU VỒNG SIÊU TÂN TINH',
+          ultimateKanji: '虹',
+          awakenName: 'THẦN CẦU VỒNG',
+        },
+      },
+    },
+  ],
+  valkyrie: [
+    {
+      id: 'default',
+      name: 'Mặc định',
+      subtitle: 'Thánh Quang Chiến Nữ',
+      badgeColor: '#fde047',
+      rarity: 'classic',
+      overrides: {},
+    },
+    {
+      id: 'celestial_empress',
+      name: 'Celestial Empress',
+      subtitle: '星后 · Nữ Hoàng Tinh Tú',
+      badgeColor: '#38bdf8',
+      rarity: 'mythic',
+      overrides: {
+        codename: 'Nữ Hoàng Tinh Tú',
+        bodyColor: '#0f172a',
+        awakenedBodyColor: '#1e3a8a',
+        glowColor: '#38bdf8',
+        accentColor: '#7dd3fc',
+        scarfPrimary: '#0284c7',
+        scarfHighlight: '#fde047',
+        auraStyle: 'cyan',
+        awakenedAuraStyle: 'gold',
+        weapon: 'valkyrie_glaive',
+        awakenedWeapon: 'valkyrie_excalibur',
+        headGear: 'valkyrie_wings',
+        ultimateKanji: '星',
+        ultimatePrimaryColor: '#0369a1',
+        ultimateSecondaryColor: '#fde047',
+        ultimateBannerTitle: 'NGÂN HÀ PHÁN QUYẾT · 星',
+        awakeningBannerText: 'THỨC TỈNH: NỮ HOÀNG TINH TÚ!',
+        awakeningWaveColor: '#38bdf8',
+        slashColors: ['#38bdf8', '#fde047'],
+        skills: {
+          specialName: 'NGÂN HÀ TRẬN',
+          specialActiveName: 'TINH TÚ PHÁN QUYẾT',
+          ultimateName: 'NGÂN HÀ',
+          ultimateFullName: 'NGÂN HÀ PHÁN QUYẾT',
+          ultimateKanji: '星',
+          awakenName: 'NỮ HOÀNG',
+        },
+      },
+    },
+    {
+      id: 'abyssal_valkyrie',
+      name: 'Abyssal Valkyrie',
+      subtitle: '堕天 · Nữ Thần Nhật Thực',
+      badgeColor: '#f43f5e',
+      rarity: 'legendary',
+      overrides: {
+        codename: 'Nữ Thần Nhật Thực',
+        bodyColor: '#18181b',
+        awakenedBodyColor: '#4c0519',
+        glowColor: '#f43f5e',
+        accentColor: '#fb7185',
+        scarfPrimary: '#9f1239',
+        scarfHighlight: '#e879f9',
+        auraStyle: 'purple',
+        awakenedAuraStyle: 'crimson',
+        weapon: 'valkyrie_glaive',
+        awakenedWeapon: 'valkyrie_excalibur',
+        headGear: 'valkyrie_wings',
+        ultimateKanji: '堕',
+        ultimatePrimaryColor: '#9f1239',
+        ultimateSecondaryColor: '#e879f9',
+        ultimateBannerTitle: 'ĐỌA THIÊN NHẬT THỰC · 堕',
+        awakeningBannerText: 'THỨC TỈNH: NỮ THẦN NHẬT THỰC!',
+        awakeningWaveColor: '#f43f5e',
+        slashColors: ['#f43f5e', '#a855f7'],
+        skills: {
+          specialName: 'ĐỌA THIÊN TRẬN',
+          specialActiveName: 'HẮC QUANG TRẢM',
+          ultimateName: 'ĐỌA THIÊN',
+          ultimateFullName: 'ĐỌA THIÊN NHẬT THỰC',
+          ultimateKanji: '堕',
+          awakenName: 'ĐỌA THIÊN',
+        },
+      },
+    },
+  ],
+  mirage: [
+    {
+      id: 'default',
+      name: 'Ảnh Kính',
+      subtitle: 'Gương Bạc Hư Không',
+      badgeColor: '#c084fc',
+      rarity: 'classic',
+      overrides: {},
+    },
+    {
+      id: 'void_shatterer',
+      name: 'Ma Kính',
+      subtitle: 'Hư Không Phá Giới',
+      badgeColor: '#f43f5e',
+      rarity: 'mythic',
+      overrides: {
+        bodyColor: '#09090b',
+        awakenedBodyColor: '#3b0764',
+        glowColor: '#f43f5e',
+        accentColor: '#38bdf8',
+        scarfPrimary: '#be123c',
+        scarfHighlight: '#f0abfc',
+        ultimatePrimaryColor: '#f43f5e',
+        ultimateSecondaryColor: '#38bdf8',
+        ultimateBannerTitle: 'MA KÍNH PHÁ GIỚI · 碎',
+        awakeningBannerText: 'THỨC TỈNH: MA KÍNH HƯ KHÔNG!',
+        awakeningWaveColor: '#f43f5e',
+        slashColors: ['#38bdf8', '#f43f5e'],
+        skills: {
+          specialName: 'MA KÍNH ĐOẠN GIỚI',
+          specialActiveName: 'PHÁ KÍNH HƯ KHÔNG',
+          ultimateName: 'PHÁ GIỚI',
+          ultimateFullName: 'MA KÍNH PHÁ GIỚI',
+          ultimateKanji: '碎',
+          awakenName: 'MA KÍNH',
+        },
+      },
+    },
+  ],
+  chrono: [
+    {
+      id: 'default',
+      name: 'Đồng Hồ Sư',
+      subtitle: 'Vàng Đồng · Xanh Ngọc',
+      badgeColor: '#2dd4bf',
+      rarity: 'classic',
+      overrides: {},
+    },
+    {
+      id: 'chrono_sovereign',
+      name: 'Thần Thời Gian',
+      subtitle: 'Tháp Đồng Hồ Cổ Đại',
+      badgeColor: '#f59e0b',
+      rarity: 'mythic',
+      overrides: {
+        codename: 'Chúa Tể Tháp Đồng Hồ',
+        bodyColor: '#1c1917',
+        awakenedBodyColor: '#78350f',
+        glowColor: '#f59e0b',
+        accentColor: '#38bdf8',
+        scarfPrimary: '#b45309',
+        scarfHighlight: '#fef08a',
+        auraStyle: 'gold',
+        awakenedAuraStyle: 'gold',
+        weapon: 'chrono_hand',
+        awakenedWeapon: 'chrono_twin_hands',
+        headGear: 'chrono_gear',
+        ultimateKanji: '刻',
+        ultimatePrimaryColor: '#f59e0b',
+        ultimateSecondaryColor: '#38bdf8',
+        ultimateBannerTitle: 'THÁP ĐỒNG HỒ VĨNH HẰNG · 刻',
+        awakeningBannerText: 'BÀNH TRƯỚNG: THÁP ĐỒNG HỒ CỔ ĐẠI!',
+        awakeningWaveColor: '#f59e0b',
+        slashColors: ['#f59e0b', '#38bdf8'],
+        skills: {
+          basicName: 'SONG KIM THẦN THỜI GIAN',
+          specialName: 'ĐỒNG HỒ ĐỊNH MỆNH',
+          specialActiveName: 'BÁNH RĂNG VĨNH HẰNG',
+          specialDesc: 'Triệu hồi Bóng Quá Khứ hoàng kim tái hiện chuỗi đòn đánh trễ 0.4s & khắc Thời Ấn',
+          synergyHint: 'Liên chiêu: [U] Đồng Hồ Định Mệnh → [J] Bánh Răng Vĩnh Hằng & Bành Trướng Tháp Cổ Đại!',
+          ultimateName: 'VĨNH HẰNG',
+          ultimateFullName: 'THÁP ĐỒNG HỒ VĨNH HẰNG',
+          ultimateKanji: '刻',
+          ultimateDesc: 'Ngưng Đọng Toàn Cầu & Bành Trướng Tháp Đồng Hồ Cổ Đại, tích dồn sát thương rồi búng tay kích nổ',
+          awakenName: 'THÁP CỔ ĐẠI',
+          awakenDesc: 'Mở Lãnh Địa Tháp Đồng Hồ Cổ Đại, Song Kim Thần Thời Gian & hồi máu khi hạ địch',
+        },
+      },
+    },
+  ],
+  mactien: [
+    {
+      id: 'default',
+      name: 'Thư Sinh Áo Vải',
+      subtitle: 'Thủy Mặc · Ngọc Bích · Chu Sa',
+      badgeColor: '#2dd4bf',
+      rarity: 'classic',
+      overrides: {},
+    },
+    {
+      id: 'xuan_feng_sage',
+      name: 'Xuân Phong Văn Thánh',
+      subtitle: '春風 · Nhất Khí Hạo Nhiên',
+      badgeColor: '#5eead4',
+      rarity: 'mythic',
+      overrides: {
+        codename: 'Xuân Phong Văn Thánh',
+        bodyColor: '#f8fafc',
+        awakenedBodyColor: '#f0fdfa',
+        glowColor: '#5eead4',
+        accentColor: '#fde68a',
+        scarfPrimary: '#f8fafc',
+        scarfHighlight: '#5eead4',
+        auraStyle: 'cyan',
+        awakenedAuraStyle: 'cyan',
+        weapon: 'ink_brush',
+        awakenedWeapon: 'golden_ink_brush',
+        headGear: 'jade_hairpin',
+        ultimateKanji: '春',
+        ultimatePrimaryColor: '#5eead4',
+        ultimateSecondaryColor: '#fde68a',
+        ultimateBannerTitle: 'XUÂN PHONG VĂN THÁNH · 春',
+        awakeningBannerText: 'BÀNH TRƯỚNG: XUÂN PHONG VĂN MIẾU!',
+        awakeningWaveColor: '#5eead4',
+        slashColors: ['#5eead4', '#fde68a'],
+        skills: {
+          basicName: 'NGỌC TIÊU TIÊN BÚT',
+          specialName: 'THANH PHONG TĨNH ẤN',
+          specialActiveName: 'XUÂN HOA PHONG ẤN',
+          specialDesc: 'Khai mở pháp trận thư pháp ngọc bích khắc chữ "静" viền cánh hoa đào xoay nhẹ, giữ chân mục tiêu 1.1s rồi tan thành gió xuân',
+          synergyHint: 'Liên chiêu: [U] Thanh Phong Tĩnh Ấn → [J] Xuân Hoa Phong Ấn & Quét Ngọc Tiêu Tiên Bút!',
+          ultimateName: 'HẠO NHIÊN',
+          ultimateFullName: 'XUÂN PHONG VĂN THÁNH',
+          ultimateKanji: '春',
+          ultimateDesc: 'Hội tụ Thiên Địa Văn Luân giữa đêm mực thẫm, xé không gian bằng thẻ tre & đóng ấn chương chu sa "春" rực sáng',
+          awakenName: 'NGUYỆT BẠCH THANH PHONG',
+          awakenDesc: 'Thức tỉnh Nguyệt Bạch – Thanh Ngọc – Vàng Nhạt: mở Lãnh Địa Xuân Phong Văn Miếu & Ngự Bút Thiên Hành',
+        },
+      },
+    },
+  ],
+};
+
+export function getSkinsForCharacter(id: CharacterId): CharacterSkinDefinition[] {
+  return CHARACTER_SKINS[id] ?? [];
+}
+
+export function normalizeSkinForCharacter(id: CharacterId, skinId: string | null | undefined): SkinId {
+  const skins = getSkinsForCharacter(id);
+  if (skinId && skins.some((s) => s.id === skinId)) {
+    return skinId as SkinId;
   }
-  return CHARACTER_ROSTER.kuro;
+  return 'default';
+}
+
+export function getCharacterDef(
+  id: string | null | undefined,
+  skinId: SkinId = 'default'
+): CharacterDefinition {
+  const base =
+    id && id in CHARACTER_ROSTER ? CHARACTER_ROSTER[id as CharacterId] : CHARACTER_ROSTER.kuro;
+  const skins = CHARACTER_SKINS[base.id];
+  if (!skins || skinId === 'default') return base;
+  const skin = skins.find((s) => s.id === skinId);
+  if (!skin) return base;
+  const { skills: skillOverrides, ...restOverrides } = skin.overrides;
+  return {
+    ...base,
+    ...restOverrides,
+    skills: skillOverrides ? { ...base.skills, ...skillOverrides } : base.skills,
+  };
 }
 
 /**

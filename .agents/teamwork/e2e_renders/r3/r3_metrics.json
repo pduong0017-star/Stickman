@@ -1,0 +1,826 @@
+{
+  "ok": false,
+  "blank_cells": [],
+  "nan_cells": [],
+  "shadow_blur_cells": [],
+  "unbalanced_save_restore": [],
+  "low_contrast_cells": [],
+  "low_mae_pairs": [
+    {
+      "sheet": "12bosses",
+      "group": "boss_akaza",
+      "pair": [
+        "phase1",
+        "phase2"
+      ],
+      "mae": 0.4615
+    },
+    {
+      "sheet": "12bosses",
+      "group": "boss_astra",
+      "pair": [
+        "phase1",
+        "phase2"
+      ],
+      "mae": 0.772
+    },
+    {
+      "sheet": "12bosses",
+      "group": "boss_fable",
+      "pair": [
+        "phase1",
+        "phase2"
+      ],
+      "mae": 0.5649
+    },
+    {
+      "sheet": "12bosses",
+      "group": "boss_glacius",
+      "pair": [
+        "phase1",
+        "phase2"
+      ],
+      "mae": 0.6443
+    },
+    {
+      "sheet": "12bosses",
+      "group": "boss_haiku",
+      "pair": [
+        "phase1",
+        "phase2"
+      ],
+      "mae": 0.7059
+    },
+    {
+      "sheet": "12bosses",
+      "group": "boss_kronos",
+      "pair": [
+        "phase1",
+        "phase2"
+      ],
+      "mae": 0.5947
+    },
+    {
+      "sheet": "12bosses",
+      "group": "boss_nyx",
+      "pair": [
+        "phase1",
+        "phase2"
+      ],
+      "mae": 0.573
+    },
+    {
+      "sheet": "12bosses",
+      "group": "boss_omega",
+      "pair": [
+        "phase1",
+        "phase2"
+      ],
+      "mae": 0.4462
+    },
+    {
+      "sheet": "12bosses",
+      "group": "boss_opus",
+      "pair": [
+        "phase1",
+        "phase2"
+      ],
+      "mae": 0.5179
+    },
+    {
+      "sheet": "12bosses",
+      "group": "boss_raiden",
+      "pair": [
+        "phase1",
+        "phase2"
+      ],
+      "mae": 0.6556
+    },
+    {
+      "sheet": "12bosses",
+      "group": "boss_sol",
+      "pair": [
+        "phase1",
+        "phase2"
+      ],
+      "mae": 0.564
+    },
+    {
+      "sheet": "12bosses",
+      "group": "boss_vulcan",
+      "pair": [
+        "phase1",
+        "phase2"
+      ],
+      "mae": 0.7654
+    }
+  ],
+  "pairwise_mae": {
+    "normal_vs_awakened": {
+      "aether": 7.1348,
+      "kagura": 11.7808,
+      "kuro": 11.4991,
+      "raijin": 14.207,
+      "valkyrie": 17.6297,
+      "zero": 8.8627
+    },
+    "normal_vs_elite": {
+      "berserker_reaper": 2.4468,
+      "cyber_ninja": 2.6339,
+      "deepseek_gunner": 2.7628,
+      "frost_mage": 2.745,
+      "heavy_brute": 1.8273,
+      "meta_melee": 2.8585,
+      "shield_guard": 2.618,
+      "swarm_blade": 2.9339
+    },
+    "boss_p1_vs_p2": {
+      "boss_akaza": 0.4615,
+      "boss_astra": 0.772,
+      "boss_fable": 0.5649,
+      "boss_glacius": 0.6443,
+      "boss_haiku": 0.7059,
+      "boss_kronos": 0.5947,
+      "boss_nyx": 0.573,
+      "boss_omega": 0.4462,
+      "boss_opus": 0.5179,
+      "boss_raiden": 0.6556,
+      "boss_sol": 0.564,
+      "boss_vulcan": 0.7654
+    },
+    "bosses_cross_p1_min": 3.7476,
+    "bosses_cross_p1_min_pair": [
+      "boss_vulcan",
+      "boss_akaza"
+    ],
+    "skins_18_cross_min": 5.8264,
+    "skins_18_cross_min_pair": [
+      "zero:default",
+      "zero:astral_phantom"
+    ]
+  },
+  "sheets": {
+    "6chars": {
+      "png_path": "/storage/emulated/0/Antigravity/Stickman/.agents/teamwork/e2e_renders/r3/r3_6chars_normal_vs_awakened.png",
+      "cell_count": 12,
+      "blank_cells": [],
+      "low_contrast_count": 0,
+      "cell_metrics": {
+        "kuro:normal": {
+          "non_bg_ratio": 0.091,
+          "entity_pixels": 8655,
+          "p10_luma": 12.08,
+          "p95_luma": 200.61,
+          "luma_spread": 188.53,
+          "dark_ink_ratio": 0.515,
+          "bright_contrast_ratio": 0.0877
+        },
+        "raijin:normal": {
+          "non_bg_ratio": 0.0932,
+          "entity_pixels": 8832,
+          "p10_luma": 12.08,
+          "p95_luma": 235.61,
+          "luma_spread": 223.54,
+          "dark_ink_ratio": 0.4064,
+          "bright_contrast_ratio": 0.3244
+        },
+        "kagura:normal": {
+          "non_bg_ratio": 0.0916,
+          "entity_pixels": 8594,
+          "p10_luma": 12.08,
+          "p95_luma": 186.88,
+          "luma_spread": 174.8,
+          "dark_ink_ratio": 0.5074,
+          "bright_contrast_ratio": 0.108
+        },
+        "zero:normal": {
+          "non_bg_ratio": 0.0812,
+          "entity_pixels": 7631,
+          "p10_luma": 12.08,
+          "p95_luma": 224.32,
+          "luma_spread": 212.24,
+          "dark_ink_ratio": 0.392,
+          "bright_contrast_ratio": 0.2719
+        },
+        "aether:normal": {
+          "non_bg_ratio": 0.0779,
+          "entity_pixels": 7738,
+          "p10_luma": 10.21,
+          "p95_luma": 219.19,
+          "luma_spread": 208.97,
+          "dark_ink_ratio": 0.5165,
+          "bright_contrast_ratio": 0.1715
+        },
+        "valkyrie:normal": {
+          "non_bg_ratio": 0.1004,
+          "entity_pixels": 9002,
+          "p10_luma": 12.08,
+          "p95_luma": 255.0,
+          "luma_spread": 242.92,
+          "dark_ink_ratio": 0.3423,
+          "bright_contrast_ratio": 0.4539
+        },
+        "kuro:awakened": {
+          "non_bg_ratio": 0.1146,
+          "entity_pixels": 11093,
+          "p10_luma": 7.79,
+          "p95_luma": 178.69,
+          "luma_spread": 170.91,
+          "dark_ink_ratio": 0.5488,
+          "bright_contrast_ratio": 0.0577
+        },
+        "raijin:awakened": {
+          "non_bg_ratio": 0.1155,
+          "entity_pixels": 11140,
+          "p10_luma": 12.08,
+          "p95_luma": 235.61,
+          "luma_spread": 223.54,
+          "dark_ink_ratio": 0.317,
+          "bright_contrast_ratio": 0.3496
+        },
+        "kagura:awakened": {
+          "non_bg_ratio": 0.1264,
+          "entity_pixels": 11951,
+          "p10_luma": 12.08,
+          "p95_luma": 219.12,
+          "luma_spread": 207.04,
+          "dark_ink_ratio": 0.3724,
+          "bright_contrast_ratio": 0.1467
+        },
+        "zero:awakened": {
+          "non_bg_ratio": 0.1086,
+          "entity_pixels": 10222,
+          "p10_luma": 12.08,
+          "p95_luma": 184.88,
+          "luma_spread": 172.8,
+          "dark_ink_ratio": 0.3712,
+          "bright_contrast_ratio": 0.2777
+        },
+        "aether:awakened": {
+          "non_bg_ratio": 0.0898,
+          "entity_pixels": 8595,
+          "p10_luma": 7.43,
+          "p95_luma": 246.16,
+          "luma_spread": 238.73,
+          "dark_ink_ratio": 0.3952,
+          "bright_contrast_ratio": 0.1782
+        },
+        "valkyrie:awakened": {
+          "non_bg_ratio": 0.1119,
+          "entity_pixels": 10180,
+          "p10_luma": 12.08,
+          "p95_luma": 252.26,
+          "luma_spread": 240.18,
+          "dark_ink_ratio": 0.2596,
+          "bright_contrast_ratio": 0.4474
+        }
+      }
+    },
+    "18skins": {
+      "png_path": "/storage/emulated/0/Antigravity/Stickman/.agents/teamwork/e2e_renders/r3/r3_18_skins_sheet.png",
+      "cell_count": 18,
+      "blank_cells": [],
+      "low_contrast_count": 0,
+      "cell_metrics": {
+        "kuro:default": {
+          "non_bg_ratio": 0.2048,
+          "entity_pixels": 17342,
+          "p10_luma": 16.58,
+          "p95_luma": 255.0,
+          "luma_spread": 238.42,
+          "dark_ink_ratio": 0.2473,
+          "bright_contrast_ratio": 0.2513
+        },
+        "kuro:radiant_seraph": {
+          "non_bg_ratio": 0.2285,
+          "entity_pixels": 18785,
+          "p10_luma": 50.87,
+          "p95_luma": 255.0,
+          "luma_spread": 204.13,
+          "dark_ink_ratio": 0.124,
+          "bright_contrast_ratio": 0.5727
+        },
+        "kuro:void_walker": {
+          "non_bg_ratio": 0.1989,
+          "entity_pixels": 17658,
+          "p10_luma": 12.08,
+          "p95_luma": 255.0,
+          "luma_spread": 242.92,
+          "dark_ink_ratio": 0.4093,
+          "bright_contrast_ratio": 0.2303
+        },
+        "kuro:eclipse_ronin": {
+          "non_bg_ratio": 0.1976,
+          "entity_pixels": 17405,
+          "p10_luma": 9.14,
+          "p95_luma": 255.0,
+          "luma_spread": 245.86,
+          "dark_ink_ratio": 0.3344,
+          "bright_contrast_ratio": 0.2373
+        },
+        "raijin:default": {
+          "non_bg_ratio": 0.1232,
+          "entity_pixels": 10545,
+          "p10_luma": 12.08,
+          "p95_luma": 255.0,
+          "luma_spread": 242.92,
+          "dark_ink_ratio": 0.3084,
+          "bright_contrast_ratio": 0.3688
+        },
+        "raijin:storm_shogun": {
+          "non_bg_ratio": 0.1312,
+          "entity_pixels": 11211,
+          "p10_luma": 12.08,
+          "p95_luma": 255.0,
+          "luma_spread": 242.92,
+          "dark_ink_ratio": 0.3412,
+          "bright_contrast_ratio": 0.2637
+        },
+        "raijin:cyber_valkyrie": {
+          "non_bg_ratio": 0.1019,
+          "entity_pixels": 10847,
+          "p10_luma": 9.08,
+          "p95_luma": 255.0,
+          "luma_spread": 245.92,
+          "dark_ink_ratio": 0.4052,
+          "bright_contrast_ratio": 0.3265
+        },
+        "kagura:default": {
+          "non_bg_ratio": 0.2479,
+          "entity_pixels": 20734,
+          "p10_luma": 22.1,
+          "p95_luma": 255.0,
+          "luma_spread": 232.9,
+          "dark_ink_ratio": 0.1938,
+          "bright_contrast_ratio": 0.4023
+        },
+        "kagura:solar_phoenix": {
+          "non_bg_ratio": 0.2663,
+          "entity_pixels": 21868,
+          "p10_luma": 21.4,
+          "p95_luma": 255.0,
+          "luma_spread": 233.6,
+          "dark_ink_ratio": 0.1779,
+          "bright_contrast_ratio": 0.5458
+        },
+        "kagura:frost_empress": {
+          "non_bg_ratio": 0.239,
+          "entity_pixels": 21495,
+          "p10_luma": 19.24,
+          "p95_luma": 255.0,
+          "luma_spread": 235.76,
+          "dark_ink_ratio": 0.1773,
+          "bright_contrast_ratio": 0.4402
+        },
+        "zero:default": {
+          "non_bg_ratio": 0.1083,
+          "entity_pixels": 9277,
+          "p10_luma": 12.08,
+          "p95_luma": 255.0,
+          "luma_spread": 242.92,
+          "dark_ink_ratio": 0.2968,
+          "bright_contrast_ratio": 0.3536
+        },
+        "zero:blood_moon": {
+          "non_bg_ratio": 0.107,
+          "entity_pixels": 10129,
+          "p10_luma": 9.14,
+          "p95_luma": 255.0,
+          "luma_spread": 245.86,
+          "dark_ink_ratio": 0.4202,
+          "bright_contrast_ratio": 0.2804
+        },
+        "zero:astral_phantom": {
+          "non_bg_ratio": 0.1038,
+          "entity_pixels": 9546,
+          "p10_luma": 15.94,
+          "p95_luma": 255.0,
+          "luma_spread": 239.06,
+          "dark_ink_ratio": 0.4138,
+          "bright_contrast_ratio": 0.3128
+        },
+        "aether:default": {
+          "non_bg_ratio": 0.2138,
+          "entity_pixels": 18306,
+          "p10_luma": 20.59,
+          "p95_luma": 255.0,
+          "luma_spread": 234.41,
+          "dark_ink_ratio": 0.2583,
+          "bright_contrast_ratio": 0.2146
+        },
+        "aether:prismatic_archon": {
+          "non_bg_ratio": 0.2541,
+          "entity_pixels": 21236,
+          "p10_luma": 13.95,
+          "p95_luma": 255.0,
+          "luma_spread": 241.05,
+          "dark_ink_ratio": 0.3056,
+          "bright_contrast_ratio": 0.3257
+        },
+        "valkyrie:default": {
+          "non_bg_ratio": 0.1285,
+          "entity_pixels": 10614,
+          "p10_luma": 12.13,
+          "p95_luma": 255.0,
+          "luma_spread": 242.87,
+          "dark_ink_ratio": 0.2564,
+          "bright_contrast_ratio": 0.452
+        },
+        "valkyrie:celestial_empress": {
+          "non_bg_ratio": 0.0995,
+          "entity_pixels": 10611,
+          "p10_luma": 10.16,
+          "p95_luma": 255.0,
+          "luma_spread": 244.84,
+          "dark_ink_ratio": 0.394,
+          "bright_contrast_ratio": 0.257
+        },
+        "valkyrie:abyssal_valkyrie": {
+          "non_bg_ratio": 0.1112,
+          "entity_pixels": 10682,
+          "p10_luma": 6.42,
+          "p95_luma": 255.0,
+          "luma_spread": 248.58,
+          "dark_ink_ratio": 0.4817,
+          "bright_contrast_ratio": 0.1197
+        }
+      }
+    },
+    "8enemies": {
+      "png_path": "/storage/emulated/0/Antigravity/Stickman/.agents/teamwork/e2e_renders/r3/r3_8_enemies_normal_vs_elite.png",
+      "cell_count": 16,
+      "blank_cells": [],
+      "low_contrast_count": 0,
+      "cell_metrics": {
+        "meta_melee:normal": {
+          "non_bg_ratio": 0.0733,
+          "entity_pixels": 5880,
+          "p10_luma": 12.08,
+          "p95_luma": 255.0,
+          "luma_spread": 242.92,
+          "dark_ink_ratio": 0.3866,
+          "bright_contrast_ratio": 0.2447
+        },
+        "deepseek_gunner:normal": {
+          "non_bg_ratio": 0.0608,
+          "entity_pixels": 4848,
+          "p10_luma": 12.08,
+          "p95_luma": 231.3,
+          "luma_spread": 219.23,
+          "dark_ink_ratio": 0.4051,
+          "bright_contrast_ratio": 0.2613
+        },
+        "swarm_blade:normal": {
+          "non_bg_ratio": 0.0743,
+          "entity_pixels": 5957,
+          "p10_luma": 12.08,
+          "p95_luma": 244.44,
+          "luma_spread": 232.36,
+          "dark_ink_ratio": 0.3905,
+          "bright_contrast_ratio": 0.2473
+        },
+        "shield_guard:normal": {
+          "non_bg_ratio": 0.0726,
+          "entity_pixels": 5886,
+          "p10_luma": 12.08,
+          "p95_luma": 214.19,
+          "luma_spread": 202.12,
+          "dark_ink_ratio": 0.4682,
+          "bright_contrast_ratio": 0.2774
+        },
+        "cyber_ninja:normal": {
+          "non_bg_ratio": 0.0698,
+          "entity_pixels": 5626,
+          "p10_luma": 12.08,
+          "p95_luma": 187.23,
+          "luma_spread": 175.16,
+          "dark_ink_ratio": 0.4573,
+          "bright_contrast_ratio": 0.2645
+        },
+        "heavy_brute:normal": {
+          "non_bg_ratio": 0.071,
+          "entity_pixels": 6069,
+          "p10_luma": 12.08,
+          "p95_luma": 220.04,
+          "luma_spread": 207.97,
+          "dark_ink_ratio": 0.4408,
+          "bright_contrast_ratio": 0.2954
+        },
+        "frost_mage:normal": {
+          "non_bg_ratio": 0.0764,
+          "entity_pixels": 6555,
+          "p10_luma": 12.08,
+          "p95_luma": 222.31,
+          "luma_spread": 210.23,
+          "dark_ink_ratio": 0.3672,
+          "bright_contrast_ratio": 0.3004
+        },
+        "berserker_reaper:normal": {
+          "non_bg_ratio": 0.0788,
+          "entity_pixels": 6183,
+          "p10_luma": 12.08,
+          "p95_luma": 215.85,
+          "luma_spread": 203.77,
+          "dark_ink_ratio": 0.4605,
+          "bright_contrast_ratio": 0.1682
+        },
+        "meta_melee:elite": {
+          "non_bg_ratio": 0.0973,
+          "entity_pixels": 8004,
+          "p10_luma": 12.08,
+          "p95_luma": 255.0,
+          "luma_spread": 242.92,
+          "dark_ink_ratio": 0.3528,
+          "bright_contrast_ratio": 0.2679
+        },
+        "deepseek_gunner:elite": {
+          "non_bg_ratio": 0.0829,
+          "entity_pixels": 6849,
+          "p10_luma": 12.08,
+          "p95_luma": 231.3,
+          "luma_spread": 219.23,
+          "dark_ink_ratio": 0.3751,
+          "bright_contrast_ratio": 0.2868
+        },
+        "swarm_blade:elite": {
+          "non_bg_ratio": 0.0988,
+          "entity_pixels": 8117,
+          "p10_luma": 12.08,
+          "p95_luma": 244.44,
+          "luma_spread": 232.36,
+          "dark_ink_ratio": 0.3548,
+          "bright_contrast_ratio": 0.2703
+        },
+        "shield_guard:elite": {
+          "non_bg_ratio": 0.0949,
+          "entity_pixels": 7860,
+          "p10_luma": 12.08,
+          "p95_luma": 230.54,
+          "luma_spread": 218.47,
+          "dark_ink_ratio": 0.4225,
+          "bright_contrast_ratio": 0.2968
+        },
+        "cyber_ninja:elite": {
+          "non_bg_ratio": 0.0943,
+          "entity_pixels": 7783,
+          "p10_luma": 12.08,
+          "p95_luma": 204.35,
+          "luma_spread": 192.27,
+          "dark_ink_ratio": 0.4112,
+          "bright_contrast_ratio": 0.2861
+        },
+        "heavy_brute:elite": {
+          "non_bg_ratio": 0.0922,
+          "entity_pixels": 8008,
+          "p10_luma": 12.08,
+          "p95_luma": 230.54,
+          "luma_spread": 218.47,
+          "dark_ink_ratio": 0.4207,
+          "bright_contrast_ratio": 0.3006
+        },
+        "frost_mage:elite": {
+          "non_bg_ratio": 0.0814,
+          "entity_pixels": 6936,
+          "p10_luma": 12.08,
+          "p95_luma": 222.31,
+          "luma_spread": 210.23,
+          "dark_ink_ratio": 0.345,
+          "bright_contrast_ratio": 0.3394
+        },
+        "berserker_reaper:elite": {
+          "non_bg_ratio": 0.0985,
+          "entity_pixels": 7978,
+          "p10_luma": 12.08,
+          "p95_luma": 215.85,
+          "luma_spread": 203.77,
+          "dark_ink_ratio": 0.4214,
+          "bright_contrast_ratio": 0.2241
+        }
+      }
+    },
+    "12bosses": {
+      "png_path": "/storage/emulated/0/Antigravity/Stickman/.agents/teamwork/e2e_renders/r3/r3_12_bosses_p1_vs_p2.png",
+      "cell_count": 24,
+      "blank_cells": [],
+      "low_contrast_count": 0,
+      "cell_metrics": {
+        "boss_haiku:phase1": {
+          "non_bg_ratio": 0.0619,
+          "entity_pixels": 6028,
+          "p10_luma": 12.08,
+          "p95_luma": 214.19,
+          "luma_spread": 202.12,
+          "dark_ink_ratio": 0.4859,
+          "bright_contrast_ratio": 0.1349
+        },
+        "boss_astra:phase1": {
+          "non_bg_ratio": 0.062,
+          "entity_pixels": 6148,
+          "p10_luma": 12.08,
+          "p95_luma": 227.79,
+          "luma_spread": 215.71,
+          "dark_ink_ratio": 0.4489,
+          "bright_contrast_ratio": 0.3076
+        },
+        "boss_glacius:phase1": {
+          "non_bg_ratio": 0.0795,
+          "entity_pixels": 7606,
+          "p10_luma": 12.08,
+          "p95_luma": 222.31,
+          "luma_spread": 210.23,
+          "dark_ink_ratio": 0.3153,
+          "bright_contrast_ratio": 0.3191
+        },
+        "boss_opus:phase1": {
+          "non_bg_ratio": 0.0659,
+          "entity_pixels": 6445,
+          "p10_luma": 12.08,
+          "p95_luma": 187.37,
+          "luma_spread": 175.29,
+          "dark_ink_ratio": 0.5455,
+          "bright_contrast_ratio": 0.0659
+        },
+        "boss_vulcan:phase1": {
+          "non_bg_ratio": 0.0646,
+          "entity_pixels": 6663,
+          "p10_luma": 12.08,
+          "p95_luma": 201.72,
+          "luma_spread": 189.65,
+          "dark_ink_ratio": 0.409,
+          "bright_contrast_ratio": 0.282
+        },
+        "boss_sol:phase1": {
+          "non_bg_ratio": 0.0586,
+          "entity_pixels": 6891,
+          "p10_luma": 12.08,
+          "p95_luma": 249.72,
+          "luma_spread": 237.64,
+          "dark_ink_ratio": 0.5162,
+          "bright_contrast_ratio": 0.2335
+        },
+        "boss_haiku:phase2": {
+          "non_bg_ratio": 0.0742,
+          "entity_pixels": 7412,
+          "p10_luma": 12.08,
+          "p95_luma": 214.19,
+          "luma_spread": 202.12,
+          "dark_ink_ratio": 0.5061,
+          "bright_contrast_ratio": 0.1162
+        },
+        "boss_astra:phase2": {
+          "non_bg_ratio": 0.0763,
+          "entity_pixels": 7746,
+          "p10_luma": 12.08,
+          "p95_luma": 227.79,
+          "luma_spread": 215.71,
+          "dark_ink_ratio": 0.4728,
+          "bright_contrast_ratio": 0.2506
+        },
+        "boss_glacius:phase2": {
+          "non_bg_ratio": 0.089,
+          "entity_pixels": 8765,
+          "p10_luma": 12.08,
+          "p95_luma": 222.31,
+          "luma_spread": 210.23,
+          "dark_ink_ratio": 0.3231,
+          "bright_contrast_ratio": 0.2983
+        },
+        "boss_opus:phase2": {
+          "non_bg_ratio": 0.0755,
+          "entity_pixels": 7580,
+          "p10_luma": 12.08,
+          "p95_luma": 156.54,
+          "luma_spread": 144.46,
+          "dark_ink_ratio": 0.5778,
+          "bright_contrast_ratio": 0.058
+        },
+        "boss_vulcan:phase2": {
+          "non_bg_ratio": 0.0778,
+          "entity_pixels": 8164,
+          "p10_luma": 12.08,
+          "p95_luma": 201.72,
+          "luma_spread": 189.65,
+          "dark_ink_ratio": 0.4155,
+          "bright_contrast_ratio": 0.2332
+        },
+        "boss_sol:phase2": {
+          "non_bg_ratio": 0.0679,
+          "entity_pixels": 7996,
+          "p10_luma": 12.08,
+          "p95_luma": 249.72,
+          "luma_spread": 237.64,
+          "dark_ink_ratio": 0.5208,
+          "bright_contrast_ratio": 0.2086
+        },
+        "boss_nyx:phase1": {
+          "non_bg_ratio": 0.0812,
+          "entity_pixels": 7635,
+          "p10_luma": 12.08,
+          "p95_luma": 189.39,
+          "luma_spread": 177.31,
+          "dark_ink_ratio": 0.5377,
+          "bright_contrast_ratio": 0.1628
+        },
+        "boss_fable:phase1": {
+          "non_bg_ratio": 0.0556,
+          "entity_pixels": 5100,
+          "p10_luma": 12.08,
+          "p95_luma": 255.0,
+          "luma_spread": 242.92,
+          "dark_ink_ratio": 0.2537,
+          "bright_contrast_ratio": 0.3927
+        },
+        "boss_raiden:phase1": {
+          "non_bg_ratio": 0.0834,
+          "entity_pixels": 8116,
+          "p10_luma": 12.08,
+          "p95_luma": 235.61,
+          "luma_spread": 223.54,
+          "dark_ink_ratio": 0.3679,
+          "bright_contrast_ratio": 0.2847
+        },
+        "boss_akaza:phase1": {
+          "non_bg_ratio": 0.0621,
+          "entity_pixels": 6214,
+          "p10_luma": 12.08,
+          "p95_luma": 187.23,
+          "luma_spread": 175.16,
+          "dark_ink_ratio": 0.42,
+          "bright_contrast_ratio": 0.2782
+        },
+        "boss_kronos:phase1": {
+          "non_bg_ratio": 0.0837,
+          "entity_pixels": 7835,
+          "p10_luma": 12.08,
+          "p95_luma": 235.61,
+          "luma_spread": 223.54,
+          "dark_ink_ratio": 0.3104,
+          "bright_contrast_ratio": 0.3271
+        },
+        "boss_omega:phase1": {
+          "non_bg_ratio": 0.0776,
+          "entity_pixels": 7603,
+          "p10_luma": 12.08,
+          "p95_luma": 235.61,
+          "luma_spread": 223.54,
+          "dark_ink_ratio": 0.267,
+          "bright_contrast_ratio": 0.353
+        },
+        "boss_nyx:phase2": {
+          "non_bg_ratio": 0.0897,
+          "entity_pixels": 8689,
+          "p10_luma": 12.08,
+          "p95_luma": 189.39,
+          "luma_spread": 177.31,
+          "dark_ink_ratio": 0.5597,
+          "bright_contrast_ratio": 0.1439
+        },
+        "boss_fable:phase2": {
+          "non_bg_ratio": 0.0754,
+          "entity_pixels": 6921,
+          "p10_luma": 12.08,
+          "p95_luma": 255.0,
+          "luma_spread": 242.92,
+          "dark_ink_ratio": 0.3958,
+          "bright_contrast_ratio": 0.2917
+        },
+        "boss_raiden:phase2": {
+          "non_bg_ratio": 0.0927,
+          "entity_pixels": 9277,
+          "p10_luma": 12.08,
+          "p95_luma": 235.61,
+          "luma_spread": 223.54,
+          "dark_ink_ratio": 0.3738,
+          "bright_contrast_ratio": 0.272
+        },
+        "boss_akaza:phase2": {
+          "non_bg_ratio": 0.0711,
+          "entity_pixels": 7365,
+          "p10_luma": 12.08,
+          "p95_luma": 183.72,
+          "luma_spread": 171.64,
+          "dark_ink_ratio": 0.4748,
+          "bright_contrast_ratio": 0.2382
+        },
+        "boss_kronos:phase2": {
+          "non_bg_ratio": 0.092,
+          "entity_pixels": 8866,
+          "p10_luma": 12.08,
+          "p95_luma": 235.61,
+          "luma_spread": 223.54,
+          "dark_ink_ratio": 0.3239,
+          "bright_contrast_ratio": 0.3044
+        },
+        "boss_omega:phase2": {
+          "non_bg_ratio": 0.0914,
+          "entity_pixels": 8871,
+          "p10_luma": 12.08,
+          "p95_luma": 235.61,
+          "luma_spread": 223.54,
+          "dark_ink_ratio": 0.3232,
+          "bright_contrast_ratio": 0.3037
+        }
+      }
+    }
+  }
+}

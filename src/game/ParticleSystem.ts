@@ -10,7 +10,12 @@ export type ParticleKind =
   | 'ring'
   | 'crack'
   | 'ink_splatter'
+  | 'feather'
+  | 'petal'
+  | 'star'
+  | 'shard'
   | 'slash_beam'
+  | 'cross_slash'
   | 'chain_arc'
   | 'text';
 
@@ -34,11 +39,13 @@ interface Particle {
   alpha: number;
 }
 
-const MAX_PARTICLES = 500;
+export const MAX_PARTICLES = 720;
 
 export class ParticleSystem {
   private pool: Particle[] = [];
   private cursor = 0;
+  private impactFlashTimer = 0;
+  private impactFlashDuration = 0;
 
   constructor() {
     for (let i = 0; i < MAX_PARTICLES; i++) {
@@ -68,6 +75,49 @@ export class ParticleSystem {
     for (let i = 0; i < MAX_PARTICLES; i++) {
       this.pool[i].active = false;
     }
+    this.impactFlashTimer = 0;
+    this.impactFlashDuration = 0;
+  }
+
+  /**
+   * Triggers a brief 30ms-50ms (1-2 frame) dark backdrop flash on heavy hits/parries
+   * so stickman silhouettes and impact sparks pop sharply.
+   */
+  public triggerImpactFlash(durationMs = 40): void {
+    const clampedSec = Math.max(0.03, Math.min(0.05, durationMs / 1000));
+    this.impactFlashDuration = clampedSec;
+    this.impactFlashTimer = Math.max(this.impactFlashTimer, clampedSec);
+  }
+
+  public isImpactFlashActive(): boolean {
+    return this.impactFlashTimer > 0;
+  }
+
+  public renderImpactFlash(
+    ctx: CanvasRenderingContext2D,
+    x: number,
+    y: number,
+    width: number,
+    height: number
+  ): void {
+    if (this.impactFlashTimer <= 0 || this.impactFlashDuration <= 0) return;
+    const ratio = Math.max(0, Math.min(1, this.impactFlashTimer / this.impactFlashDuration));
+    ctx.save();
+    ctx.fillStyle = `rgba(6, 8, 14, ${(0.76 * ratio).toFixed(3)})`;
+    ctx.fillRect(x, y, width, height);
+    ctx.restore();
+  }
+
+  public getActiveCount(): number {
+    let count = 0;
+    for (let i = 0; i < MAX_PARTICLES; i++) {
+      if (this.pool[i].active) count++;
+    }
+    return count;
+  }
+
+  public getPoolCapacity(): number {
+    return this.pool.length;
   }
 
   private alloc(): Particle {
@@ -296,6 +346,38 @@ export class ParticleSystem {
   }
 
   /**
+   * Razor-sharp screen-tearing Cross-Slash extending well past the hitbox
+   * for combo finishers, Link Arts, and lethal critical strikes.
+   */
+  public emitCrossSlash(
+    x: number,
+    y: number,
+    angle = -0.3,
+    length = 340,
+    color = '#ef4444',
+    width = 14
+  ): void {
+    const p = this.alloc();
+    p.active = true;
+    p.kind = 'cross_slash';
+    p.x = x;
+    p.y = y;
+    p.vx = 0;
+    p.vy = 0;
+    p.life = 0;
+    p.maxLife = 0.26;
+    p.size = length;
+    p.endSize = width;
+    p.color = color;
+    p.rotation = angle;
+    p.vRot = 0;
+    p.gravity = 0;
+    p.drag = 1;
+    p.alpha = 1;
+    p.text = '';
+  }
+
+  /**
    * Jagged crackling energy tether connecting (x1, y1) directly to (x2, y2) — used for
    * Raijin's Chain Lightning detonations and Zero's Shadow-Warp teleport ribbons!
    */
@@ -348,7 +430,172 @@ export class ParticleSystem {
     p.text = text;
   }
 
+  public emitFeathers(
+    x: number,
+    y: number,
+    count: number,
+    color = '#fef9c3',
+    spread = 120,
+    scale = 1
+  ): void {
+    for (let i = 0; i < count; i++) {
+      const p = this.alloc();
+      const angle = Math.random() * Math.PI * 2;
+      const spd = spread * (0.4 + Math.random() * 0.8);
+      const size = (7 + Math.random() * 5) * scale;
+      p.active = true;
+      p.kind = 'feather';
+      p.x = x + (Math.random() - 0.5) * 18;
+      p.y = y + (Math.random() - 0.5) * 18;
+      p.vx = Math.cos(angle) * spd;
+      p.vy = Math.sin(angle) * spd * 0.65 - 70;
+      p.life = 0;
+      p.maxLife = 0.28 + Math.random() * 0.16;
+      p.size = size;
+      p.endSize = size * 0.55;
+      p.color = color;
+      p.rotation = Math.random() * Math.PI * 2;
+      p.vRot = (Math.random() - 0.5) * 6;
+      p.gravity = 190;
+      p.drag = 0.94;
+      p.alpha = 0.95;
+      p.text = '';
+    }
+  }
+
+  public emitPetals(
+    x: number,
+    y: number,
+    count: number,
+    color = '#fb7185',
+    spread = 140,
+    scale = 1
+  ): void {
+    for (let i = 0; i < count; i++) {
+      const p = this.alloc();
+      const angle = Math.random() * Math.PI * 2;
+      const spd = spread * (0.4 + Math.random() * 0.85);
+      const size = (5.5 + Math.random() * 4.5) * scale;
+      p.active = true;
+      p.kind = 'petal';
+      p.x = x + (Math.random() - 0.5) * 18;
+      p.y = y + (Math.random() - 0.5) * 18;
+      p.vx = Math.cos(angle) * spd;
+      p.vy = Math.sin(angle) * spd * 0.65 - 60;
+      p.life = 0;
+      p.maxLife = 0.28 + Math.random() * 0.16;
+      p.size = size;
+      p.endSize = size * 0.6;
+      p.color = color;
+      p.rotation = Math.random() * Math.PI * 2;
+      p.vRot = (Math.random() - 0.5) * 9;
+      p.gravity = 160;
+      p.drag = 0.94;
+      p.alpha = 0.95;
+      p.text = '';
+    }
+  }
+
+  public emitStars(
+    x: number,
+    y: number,
+    count: number,
+    color = '#fef08a',
+    spread = 180,
+    scale = 1
+  ): void {
+    for (let i = 0; i < count; i++) {
+      const p = this.alloc();
+      const angle = Math.random() * Math.PI * 2;
+      const spd = spread * (0.35 + Math.random() * 0.85);
+      p.active = true;
+      p.kind = 'star';
+      p.x = x + (Math.random() - 0.5) * 16;
+      p.y = y + (Math.random() - 0.5) * 16;
+      p.vx = Math.cos(angle) * spd;
+      p.vy = Math.sin(angle) * spd;
+      p.life = 0;
+      p.maxLife = 0.22 + Math.random() * 0.18;
+      p.size = (6 + Math.random() * 5) * scale;
+      p.endSize = 1.5;
+      p.color = color;
+      p.rotation = Math.random() * Math.PI * 2;
+      p.vRot = (Math.random() - 0.5) * 8;
+      p.gravity = 0;
+      p.drag = 0.91;
+      p.alpha = 1;
+      p.text = '';
+    }
+  }
+
+  public emitShards(
+    x: number,
+    y: number,
+    count: number,
+    color = '#c084fc',
+    spread = 240,
+    scale = 1
+  ): void {
+    for (let i = 0; i < count; i++) {
+      const p = this.alloc();
+      const angle = Math.random() * Math.PI * 2;
+      const spd = spread * (0.45 + Math.random() * 0.75);
+      p.active = true;
+      p.kind = 'shard';
+      p.x = x + (Math.random() - 0.5) * 16;
+      p.y = y + (Math.random() - 0.5) * 16;
+      p.vx = Math.cos(angle) * spd;
+      p.vy = Math.sin(angle) * spd - 90;
+      p.life = 0;
+      p.maxLife = 0.2 + Math.random() * 0.18;
+      p.size = (6 + Math.random() * 6) * scale;
+      p.endSize = 1.8;
+      p.color = color;
+      p.rotation = Math.random() * Math.PI * 2;
+      p.vRot = (Math.random() - 0.5) * 14;
+      p.gravity = 560;
+      p.drag = 0.95;
+      p.alpha = 0.95;
+      p.text = '';
+    }
+  }
+
+  public emitInkSplatter(
+    x: number,
+    y: number,
+    count: number,
+    color = '#38bdf8',
+    spread = 220,
+    scale = 1
+  ): void {
+    for (let i = 0; i < count; i++) {
+      const p = this.alloc();
+      const angle = Math.random() * Math.PI * 2;
+      const spd = spread * (0.4 + Math.random() * 0.8);
+      p.active = true;
+      p.kind = 'ink_splatter';
+      p.x = x + (Math.random() - 0.5) * 12;
+      p.y = y + (Math.random() - 0.5) * 12;
+      p.vx = Math.cos(angle) * spd;
+      p.vy = Math.sin(angle) * spd - 50;
+      p.life = 0;
+      p.maxLife = 0.2 + Math.random() * 0.16;
+      p.size = (4.5 + Math.random() * 5) * scale;
+      p.endSize = 0.8;
+      p.color = color;
+      p.rotation = angle;
+      p.vRot = 0;
+      p.gravity = 640;
+      p.drag = 0.93;
+      p.alpha = 0.95;
+      p.text = '';
+    }
+  }
+
   public update(dt: number): void {
+    if (this.impactFlashTimer > 0) {
+      this.impactFlashTimer = Math.max(0, this.impactFlashTimer - dt);
+    }
     for (let i = 0; i < MAX_PARTICLES; i++) {
       const p = this.pool[i];
       if (!p.active) continue;
@@ -364,6 +611,10 @@ export class ParticleSystem {
         p.x += p.vx * dt;
         p.y += p.vy * dt;
         p.rotation += p.vRot * dt;
+      }
+
+      if (p.kind === 'feather' || p.kind === 'petal') {
+        p.x += Math.sin(p.life * 16 + p.rotation) * 32 * dt;
       }
 
       if (p.kind === 'ice' && p.y > GROUND_Y - 2) {
@@ -407,11 +658,26 @@ export class ParticleSystem {
 
       if (p.kind === 'ring') {
         ctx.save();
-        ctx.globalAlpha = inv * p.alpha;
+        ctx.globalCompositeOperation = 'lighter';
+        ctx.globalAlpha = inv * p.alpha * 0.4;
         ctx.strokeStyle = p.color;
-        ctx.lineWidth = Math.max(1.5, 5.5 * inv);
+        ctx.lineWidth = Math.max(3, 12 * inv);
         ctx.beginPath();
         ctx.arc(p.x, p.y, curSize, 0, Math.PI * 2);
+        ctx.stroke();
+
+        ctx.globalAlpha = inv * p.alpha;
+        ctx.strokeStyle = p.color;
+        ctx.lineWidth = Math.max(1.5, 5.2 * inv);
+        ctx.beginPath();
+        ctx.arc(p.x, p.y, curSize, 0, Math.PI * 2);
+        ctx.stroke();
+
+        ctx.globalAlpha = inv * p.alpha * 0.85;
+        ctx.strokeStyle = '#ffffff';
+        ctx.lineWidth = Math.max(1, 2.2 * inv);
+        ctx.beginPath();
+        ctx.arc(p.x, p.y, curSize * 0.88, 0, Math.PI * 2);
         ctx.stroke();
         ctx.restore();
         continue;
@@ -452,13 +718,24 @@ export class ParticleSystem {
 
       if (p.kind === 'spark') {
         ctx.save();
-        ctx.globalAlpha = inv;
-        ctx.strokeStyle = p.color;
-        ctx.lineWidth = Math.max(1.2, curSize * 0.75);
+        ctx.globalCompositeOperation = 'lighter';
         ctx.lineCap = 'round';
+        const tx = p.x - p.vx * 0.04;
+        const ty = p.y - p.vy * 0.04;
+        ctx.globalAlpha = inv * 0.45;
+        ctx.strokeStyle = p.color;
+        ctx.lineWidth = Math.max(2.6, curSize * 1.6);
         ctx.beginPath();
         ctx.moveTo(p.x, p.y);
-        ctx.lineTo(p.x - p.vx * 0.036, p.y - p.vy * 0.036);
+        ctx.lineTo(tx, ty);
+        ctx.stroke();
+
+        ctx.globalAlpha = inv;
+        ctx.strokeStyle = '#ffffff';
+        ctx.lineWidth = Math.max(1.1, curSize * 0.55);
+        ctx.beginPath();
+        ctx.moveTo(p.x, p.y);
+        ctx.lineTo(p.x - p.vx * 0.025, p.y - p.vy * 0.025);
         ctx.stroke();
         ctx.restore();
         continue;
@@ -486,31 +763,65 @@ export class ParticleSystem {
 
       if (p.kind === 'lightning') {
         ctx.save();
-        ctx.globalAlpha = inv * p.alpha;
-        ctx.strokeStyle = p.color;
-        ctx.lineWidth = 2.6;
-        ctx.beginPath();
+        ctx.globalCompositeOperation = 'lighter';
+        ctx.lineCap = 'round';
+        ctx.lineJoin = 'round';
+        const pts: Array<[number, number]> = [[p.x, p.y]];
         let lx = p.x;
         let ly = p.y;
-        ctx.moveTo(lx, ly);
         for (let s = 0; s < 4; s++) {
           const ang = p.rotation + (s % 2 === 0 ? 0.55 : -0.55);
           lx += Math.cos(ang) * (p.size * 0.36);
           ly += Math.sin(ang) * (p.size * 0.36);
-          ctx.lineTo(lx, ly);
+          pts.push([lx, ly]);
         }
-        ctx.stroke();
+        const trace = () => {
+          ctx.beginPath();
+          ctx.moveTo(pts[0][0], pts[0][1]);
+          for (let s = 1; s < pts.length; s++) ctx.lineTo(pts[s][0], pts[s][1]);
+          ctx.stroke();
+        };
+        ctx.globalAlpha = inv * p.alpha * 0.48;
+        ctx.strokeStyle = p.color;
+        ctx.lineWidth = 7.5;
+        trace();
+        ctx.globalAlpha = inv * p.alpha;
+        ctx.strokeStyle = p.color;
+        ctx.lineWidth = 3;
+        trace();
+        ctx.strokeStyle = '#ffffff';
+        ctx.lineWidth = 1.4;
+        trace();
         ctx.restore();
         continue;
       }
 
       if (p.kind === 'ember') {
         ctx.save();
-        ctx.globalAlpha = inv;
-        ctx.fillStyle = p.color;
+        ctx.globalCompositeOperation = 'lighter';
         ctx.translate(p.x, p.y);
         ctx.rotate(p.rotation);
-        ctx.fillRect(-curSize * 0.5, -curSize * 0.5, curSize, curSize);
+        const r = Math.max(1.2, curSize * 0.7);
+        ctx.globalAlpha = inv * 0.42;
+        ctx.fillStyle = p.color;
+        ctx.beginPath();
+        ctx.arc(0, 0, r * 2.1, 0, Math.PI * 2);
+        ctx.fill();
+
+        ctx.globalAlpha = inv;
+        ctx.fillStyle = p.color;
+        ctx.beginPath();
+        ctx.moveTo(0, -r * 1.3);
+        ctx.lineTo(r * 0.9, 0);
+        ctx.lineTo(0, r * 1.3);
+        ctx.lineTo(-r * 0.9, 0);
+        ctx.closePath();
+        ctx.fill();
+
+        ctx.fillStyle = '#ffffff';
+        ctx.beginPath();
+        ctx.arc(0, 0, r * 0.45, 0, Math.PI * 2);
+        ctx.fill();
         ctx.restore();
         continue;
       }
@@ -553,6 +864,74 @@ export class ParticleSystem {
         continue;
       }
 
+      if (p.kind === 'cross_slash') {
+        ctx.save();
+        ctx.translate(p.x, p.y);
+        const snap = Math.min(1, t * 5.8);
+        const fade = Math.min(1, inv * 1.7);
+        const primaryLen = p.size * (0.78 + snap * 0.42);
+        const secondaryLen = primaryLen * 0.68;
+        const primaryHalfW = Math.max(0.8, p.endSize * inv * inv);
+        const secondaryHalfW = Math.max(0.6, primaryHalfW * 0.72);
+
+        const drawBlade = (ang: number, len: number, halfW: number) => {
+          ctx.save();
+          ctx.rotate(ang);
+          ctx.globalAlpha = fade;
+
+          // Bold dark ink outer rim
+          ctx.fillStyle = '#090b10';
+          ctx.beginPath();
+          ctx.moveTo(-len * 0.56, 0);
+          ctx.lineTo(0, -(halfW + 3.4));
+          ctx.lineTo(len * 0.56, 0);
+          ctx.lineTo(0, halfW + 3.4);
+          ctx.closePath();
+          ctx.fill();
+
+          // Vivid elemental slash body
+          ctx.fillStyle = p.color;
+          ctx.beginPath();
+          ctx.moveTo(-len * 0.52, 0);
+          ctx.lineTo(0, -halfW);
+          ctx.lineTo(len * 0.52, 0);
+          ctx.lineTo(0, halfW);
+          ctx.closePath();
+          ctx.fill();
+
+          // Blinding white razor core
+          ctx.fillStyle = '#ffffff';
+          ctx.beginPath();
+          ctx.moveTo(-len * 0.44, 0);
+          ctx.lineTo(0, -halfW * 0.42);
+          ctx.lineTo(len * 0.44, 0);
+          ctx.lineTo(0, halfW * 0.42);
+          ctx.closePath();
+          ctx.fill();
+          ctx.restore();
+        };
+
+        // Primary long screen-tearing slash + crisp intersecting cross slash
+        drawBlade(p.rotation, primaryLen, primaryHalfW);
+        drawBlade(p.rotation + Math.PI * 0.46, secondaryLen, secondaryHalfW);
+
+        // Central diamond impact flare
+        const coreR = Math.max(2, primaryHalfW * 1.55);
+        ctx.globalCompositeOperation = 'lighter';
+        ctx.globalAlpha = fade;
+        ctx.fillStyle = '#ffffff';
+        ctx.beginPath();
+        ctx.moveTo(0, -coreR);
+        ctx.lineTo(coreR * 0.65, 0);
+        ctx.lineTo(0, coreR);
+        ctx.lineTo(-coreR * 0.65, 0);
+        ctx.closePath();
+        ctx.fill();
+
+        ctx.restore();
+        continue;
+      }
+
       if (p.kind === 'chain_arc') {
         ctx.save();
         ctx.globalAlpha = Math.min(1, inv * 1.4);
@@ -590,6 +969,141 @@ export class ParticleSystem {
         strokePath('#090b10', p.size * inv + 5.5);
         strokePath(p.color, p.size * inv + 2.2);
         strokePath('#ffffff', Math.max(1.2, p.size * inv * 0.5));
+        ctx.restore();
+        continue;
+      }
+
+      if (p.kind === 'feather') {
+        ctx.save();
+        ctx.globalAlpha = Math.min(1, inv * 1.5) * p.alpha;
+        ctx.translate(p.x, p.y);
+        ctx.rotate(p.rotation);
+        const len = Math.max(2, curSize);
+        const w = len * 0.34;
+        ctx.fillStyle = p.color;
+        ctx.beginPath();
+        ctx.moveTo(-len * 0.6, 0);
+        ctx.quadraticCurveTo(-len * 0.05, -w, len * 0.65, 0);
+        ctx.quadraticCurveTo(-len * 0.05, w, -len * 0.6, 0);
+        ctx.closePath();
+        ctx.fill();
+        ctx.strokeStyle = '#ffffff';
+        ctx.lineWidth = Math.max(0.8, len * 0.08);
+        ctx.beginPath();
+        ctx.moveTo(-len * 0.52, 0);
+        ctx.lineTo(len * 0.56, 0);
+        ctx.stroke();
+        ctx.restore();
+        continue;
+      }
+
+      if (p.kind === 'petal') {
+        ctx.save();
+        ctx.globalAlpha = Math.min(1, inv * 1.5) * p.alpha;
+        ctx.translate(p.x, p.y);
+        ctx.rotate(p.rotation);
+        const r = Math.max(1.8, curSize);
+        ctx.fillStyle = p.color;
+        ctx.beginPath();
+        ctx.moveTo(0, -r * 0.9);
+        ctx.bezierCurveTo(r * 0.78, -r * 0.45, r * 0.62, r * 0.55, 0, r * 0.9);
+        ctx.bezierCurveTo(-r * 0.62, r * 0.55, -r * 0.78, -r * 0.45, 0, -r * 0.9);
+        ctx.closePath();
+        ctx.fill();
+        ctx.strokeStyle = '#090b10';
+        ctx.lineWidth = 1.1;
+        ctx.stroke();
+        ctx.restore();
+        continue;
+      }
+
+      if (p.kind === 'star') {
+        ctx.save();
+        ctx.globalCompositeOperation = 'lighter';
+        ctx.globalAlpha = Math.min(1, inv * 1.6) * p.alpha;
+        ctx.translate(p.x, p.y);
+        ctx.rotate(p.rotation);
+        const outer = Math.max(1.8, curSize);
+        const inner = outer * 0.24;
+        ctx.fillStyle = p.color;
+        ctx.beginPath();
+        for (let k = 0; k < 8; k++) {
+          const rad = k % 2 === 0 ? outer : inner;
+          const a = (k * Math.PI) / 4;
+          const sx = Math.cos(a) * rad;
+          const sy = Math.sin(a) * rad;
+          if (k === 0) ctx.moveTo(sx, sy);
+          else ctx.lineTo(sx, sy);
+        }
+        ctx.closePath();
+        ctx.fill();
+
+        const coreOuter = outer * 0.52;
+        const coreInner = coreOuter * 0.24;
+        ctx.fillStyle = '#ffffff';
+        ctx.beginPath();
+        for (let k = 0; k < 8; k++) {
+          const rad = k % 2 === 0 ? coreOuter : coreInner;
+          const a = (k * Math.PI) / 4;
+          const sx = Math.cos(a) * rad;
+          const sy = Math.sin(a) * rad;
+          if (k === 0) ctx.moveTo(sx, sy);
+          else ctx.lineTo(sx, sy);
+        }
+        ctx.closePath();
+        ctx.fill();
+        ctx.restore();
+        continue;
+      }
+
+      if (p.kind === 'shard') {
+        ctx.save();
+        ctx.globalAlpha = Math.min(1, inv * 1.5) * p.alpha;
+        ctx.translate(p.x, p.y);
+        ctx.rotate(p.rotation);
+        const s = Math.max(1.8, curSize);
+        ctx.fillStyle = p.color;
+        ctx.beginPath();
+        ctx.moveTo(0, -s);
+        ctx.lineTo(s * 0.55, 0);
+        ctx.lineTo(0, s);
+        ctx.lineTo(-s * 0.55, 0);
+        ctx.closePath();
+        ctx.fill();
+        ctx.strokeStyle = '#090b10';
+        ctx.lineWidth = 1.4;
+        ctx.stroke();
+        ctx.strokeStyle = '#ffffff';
+        ctx.lineWidth = 1.0;
+        ctx.beginPath();
+        ctx.moveTo(0, -s * 0.72);
+        ctx.lineTo(s * 0.34, 0);
+        ctx.stroke();
+        ctx.restore();
+        continue;
+      }
+
+      if (p.kind === 'ink_splatter') {
+        ctx.save();
+        ctx.globalAlpha = Math.min(1, inv * 1.5) * p.alpha;
+        ctx.translate(p.x, p.y);
+        ctx.rotate(p.rotation);
+        const r = Math.max(1.2, curSize);
+        ctx.fillStyle = p.color;
+        ctx.beginPath();
+        ctx.ellipse(0, 0, r * 1.35, r * 0.72, 0, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.fillStyle = '#090b10';
+        ctx.beginPath();
+        ctx.moveTo(r * 1.15, 0);
+        ctx.quadraticCurveTo(0, -r * 0.58, -r * 0.85, 0);
+        ctx.quadraticCurveTo(0, r * 0.58, r * 1.15, 0);
+        ctx.closePath();
+        ctx.fill();
+        ctx.fillStyle = p.color;
+        ctx.beginPath();
+        ctx.arc(-r * 1.5, 0, Math.max(0.8, r * 0.28), 0, Math.PI * 2);
+        ctx.fill();
         ctx.restore();
         continue;
       }

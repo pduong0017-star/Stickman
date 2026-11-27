@@ -1,0 +1,95 @@
+{
+  "ok": true,
+  "cell_count": 35,
+  "grid_path": "/storage/emulated/0/Antigravity/Stickman/.agents/teamwork/e2e_renders/poses/all_5_chars_poses_grid.png",
+  "strip_paths": [
+    "/storage/emulated/0/Antigravity/Stickman/.agents/teamwork/e2e_renders/poses/poses_kuro.png",
+    "/storage/emulated/0/Antigravity/Stickman/.agents/teamwork/e2e_renders/poses/poses_raijin.png",
+    "/storage/emulated/0/Antigravity/Stickman/.agents/teamwork/e2e_renders/poses/poses_kagura.png",
+    "/storage/emulated/0/Antigravity/Stickman/.agents/teamwork/e2e_renders/poses/poses_zero.png",
+    "/storage/emulated/0/Antigravity/Stickman/.agents/teamwork/e2e_renders/poses/poses_aether.png"
+  ],
+  "blank_cells": [],
+  "nan_cells": [],
+  "non_bg_ratios": {
+    "kuro:idle": 0.0602,
+    "kuro:run": 0.0643,
+    "kuro:dash": 0.0633,
+    "kuro:jump": 0.0638,
+    "kuro:fall": 0.0608,
+    "kuro:land": 0.0598,
+    "kuro:parry": 0.0602,
+    "raijin:idle": 0.0629,
+    "raijin:run": 0.0638,
+    "raijin:dash": 0.0635,
+    "raijin:jump": 0.066,
+    "raijin:fall": 0.0639,
+    "raijin:land": 0.0588,
+    "raijin:parry": 0.0601,
+    "kagura:idle": 0.0603,
+    "kagura:run": 0.0645,
+    "kagura:dash": 0.0617,
+    "kagura:jump": 0.0623,
+    "kagura:fall": 0.0607,
+    "kagura:land": 0.0586,
+    "kagura:parry": 0.0634,
+    "zero:idle": 0.0596,
+    "zero:run": 0.0586,
+    "zero:dash": 0.0585,
+    "zero:jump": 0.0612,
+    "zero:fall": 0.0606,
+    "zero:land": 0.0569,
+    "zero:parry": 0.0532,
+    "aether:idle": 0.0713,
+    "aether:run": 0.0703,
+    "aether:dash": 0.0783,
+    "aether:jump": 0.0743,
+    "aether:fall": 0.0759,
+    "aether:land": 0.0747,
+    "aether:parry": 0.0787
+  },
+  "intra_char_mae": {
+    "kuro": {
+      "min_mae": 5.6558,
+      "min_pair": [
+        "jump",
+        "fall"
+      ],
+      "pairs_checked": 21
+    },
+    "raijin": {
+      "min_mae": 6.074,
+      "min_pair": [
+        "land",
+        "parry"
+      ],
+      "pairs_checked": 21
+    },
+    "kagura": {
+      "min_mae": 5.4881,
+      "min_pair": [
+        "idle",
+        "jump"
+      ],
+      "pairs_checked": 21
+    },
+    "zero": {
+      "min_mae": 4.3258,
+      "min_pair": [
+        "jump",
+        "fall"
+      ],
+      "pairs_checked": 21
+    },
+    "aether": {
+      "min_mae": 7.9928,
+      "min_pair": [
+        "jump",
+        "fall"
+      ],
+      "pairs_checked": 21
+    }
+  },
+  "min_intra_mae": 4.3258,
+  "low_diff_pairs": []
+}

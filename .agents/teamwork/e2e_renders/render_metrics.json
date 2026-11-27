@@ -1,0 +1,55 @@
+{
+  "ok": true,
+  "skin_count": 12,
+  "grid_path": "/storage/emulated/0/Antigravity/Stickman/.agents/teamwork/e2e_renders/all_12_skins_grid.png",
+  "output_files": [
+    "/storage/emulated/0/Antigravity/Stickman/.agents/teamwork/e2e_renders/skin_01_kuro_default.png",
+    "/storage/emulated/0/Antigravity/Stickman/.agents/teamwork/e2e_renders/skin_02_kuro_radiant_seraph.png",
+    "/storage/emulated/0/Antigravity/Stickman/.agents/teamwork/e2e_renders/skin_03_kuro_void_walker.png",
+    "/storage/emulated/0/Antigravity/Stickman/.agents/teamwork/e2e_renders/skin_04_raijin_default.png",
+    "/storage/emulated/0/Antigravity/Stickman/.agents/teamwork/e2e_renders/skin_05_raijin_storm_shogun.png",
+    "/storage/emulated/0/Antigravity/Stickman/.agents/teamwork/e2e_renders/skin_06_raijin_cyber_valkyrie.png",
+    "/storage/emulated/0/Antigravity/Stickman/.agents/teamwork/e2e_renders/skin_07_kagura_default.png",
+    "/storage/emulated/0/Antigravity/Stickman/.agents/teamwork/e2e_renders/skin_08_kagura_solar_phoenix.png",
+    "/storage/emulated/0/Antigravity/Stickman/.agents/teamwork/e2e_renders/skin_09_kagura_frost_empress.png",
+    "/storage/emulated/0/Antigravity/Stickman/.agents/teamwork/e2e_renders/skin_10_zero_default.png",
+    "/storage/emulated/0/Antigravity/Stickman/.agents/teamwork/e2e_renders/skin_11_zero_blood_moon.png",
+    "/storage/emulated/0/Antigravity/Stickman/.agents/teamwork/e2e_renders/skin_12_zero_astral_phantom.png"
+  ],
+  "non_bg_ratios": {
+    "kuro:default": 0.1062,
+    "kuro:radiant_seraph": 0.113,
+    "kuro:void_walker": 0.1085,
+    "raijin:default": 0.0687,
+    "raijin:storm_shogun": 0.0718,
+    "raijin:cyber_valkyrie": 0.0672,
+    "kagura:default": 0.1301,
+    "kagura:solar_phoenix": 0.1365,
+    "kagura:frost_empress": 0.1344,
+    "zero:default": 0.0693,
+    "zero:blood_moon": 0.07,
+    "zero:astral_phantom": 0.0735
+  },
+  "slash_zone_pixels": {
+    "kuro:default": 32755,
+    "kuro:radiant_seraph": 33697,
+    "kuro:void_walker": 32921,
+    "raijin:default": 19942,
+    "raijin:storm_shogun": 20384,
+    "raijin:cyber_valkyrie": 18679,
+    "kagura:default": 40198,
+    "kagura:solar_phoenix": 40718,
+    "kagura:frost_empress": 40275,
+    "zero:default": 18824,
+    "zero:blood_moon": 18567,
+    "zero:astral_phantom": 19293
+  },
+  "blank_skins": [],
+  "pairwise_pairs_checked": 66,
+  "pairwise_mae_min": 2.7991,
+  "min_mae_pair": [
+    "raijin:default",
+    "raijin:storm_shogun"
+  ],
+  "duplicate_pairs": []
+}

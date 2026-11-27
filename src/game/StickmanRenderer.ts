@@ -1,182 +1,78 @@
-import type { CharacterId, ScarfNode, Vec2 } from './types';
-import { animeSwingCurve, computeRunStrideKinematics } from './animation';
+import type { CharacterId, ScarfNode, SkinId, SlashVfxMotif, Vec2 } from './types';
+import { animeSwingCurve } from './animation';
+import {
+  buildSkeletonFromDraft,
+  computeBasicCharacterSkeleton,
+  isBasicPoseName,
+} from './poses';
+import { GROUND_Y } from './rules';
+import type {
+  Afterimage,
+  BossStyleOutfit,
+  EnemyOutfitId,
+  SkeletonJoints,
+  SlashTrail,
+  SlashTrailStyle,
+  StickPoseName,
+  StickmanRenderOptions,
+  StickmanRenderParams,
+} from './renderer/types';
+import {
+  renderAwakenedBackForm,
+  renderAwakenedHeadForm,
+  renderBossOutfitDetails,
+  renderHeroHeadGear,
+  renderSkinBackAttachment,
+  renderSkinBodyArmor,
+  renderSkinFrontAttachment,
+} from './renderer/gear';
+import {
+  renderOffhandChronoHand,
+  renderOffhandDagger,
+  renderOffhandMirrorShards,
+  renderWeapon,
+} from './renderer/weapons';
+import {
+  renderAfterimages,
+  renderAttackSwingAura,
+  renderSlashTrails,
+} from './renderer/trails';
+import {
+  colorWithAlpha,
+  drawInkBrushLimb,
+  drawInkBrushTorso,
+  drawInkHead,
+  finiteOr,
+  getSkinInkPalette,
+} from './renderer/inkStyle';
 
-export type StickPoseName =
-  | 'chair_idle'
-  | 'chair_kick'
-  | 'idle'
-  | 'run'
-  | 'brake_skid'
-  | 'jump'
-  | 'double_jump_flip'
-  | 'fall'
-  | 'dash'
-  | 'attack_1'
-  | 'attack_2'
-  | 'attack_3'
-  | 'attack_4'
-  | 'iai_draw_slash'
-  | 'rising_dragon_slash'
-  | 'vault_spear_slam'
-  | 'crimson_cleave_low'
-  | 'shadow_blink_cut'
-  | 'awakened_finisher'
-  | 'spin_slash'
-  | 'flurry_slash'
-  | 'dash_slash'
-  | 'parry_counter'
-  | 'cross_x_slash'
-  | 'air_attack'
-  | 'air_attack_2'
-  | 'air_slam'
-  | 'parry'
-  | 'cryo_cast'
-  | 'cryo_punch'
-  | 'awaken_pose'
-  | 'victory_dance'
-  | 'hurt'
-  | 'ko'
-  | 'gun_aim'
-  | 'shield_guard'
-  | 'shield_charge'
-  | 'spear_thrust'
-  | 'laser_slash'
-  | 'sniper_aim'
-  | 'float_cast';
+export type {
+  Afterimage,
+  BossStyleOutfit,
+  EnemyOutfitId,
+  SkeletonJoints,
+  SlashTrail,
+  SlashTrailStyle,
+  StickPoseName,
+  StickmanRenderOptions,
+  StickmanRenderParams,
+} from './renderer/types';
+export { renderAfterimages, renderSlashTrails } from './renderer/trails';
 
-export type BossStyleOutfit =
-  | 'none'
-  | 'haiku'
-  | 'astra'
-  | 'opus'
-  | 'sol'
-  | 'fable';
-
-export interface SkeletonJoints {
-  hip: Vec2;
-  spineMid: Vec2;
-  neck: Vec2;
-  head: Vec2;
-  shoulderL: Vec2;
-  elbowL: Vec2;
-  handL: Vec2;
-  shoulderR: Vec2;
-  elbowR: Vec2;
-  handR: Vec2;
-  kneeL: Vec2;
-  footL: Vec2;
-  kneeR: Vec2;
-  footR: Vec2;
-  weaponAngle: number;
-  motionArc?: {
-    x: number;
-    y: number;
-    r: number;
-    sa: number;
-    ea: number;
-  };
-}
-
-export interface SlashTrail {
-  x: number;
-  y: number;
-  facing: 1 | -1;
-  radius: number;
-  startAngle: number;
-  endAngle: number;
-  life: number;
-  maxLife: number;
-  outerColor: string;
-  coreColor: string;
-  thickness: number;
-}
-
-export interface Afterimage {
-  x: number;
-  y: number;
-  facing: 1 | -1;
-  joints: SkeletonJoints;
-  life: number;
-  maxLife: number;
-  color: string;
-}
-
-export interface StickmanRenderOptions {
-  x: number;
-  y: number;
-  facing: 1 | -1;
-  pose: StickPoseName;
-  poseTime: number;
-  walkPhase: number;
-  scaleX?: number;
-  scaleY?: number;
-  bodyColor: string;
-  glowColor: string;
-  lineWidth?: number;
-  headRadius?: number;
-  hitFlash?: number;
-  silhouette?: boolean;
-  whiteFlash?: boolean;
-  scarf?: ScarfNode[];
-  scarfPrimary?: string;
-  scarfHighlight?: string;
-  hasSheath?: boolean;
-  darkAura?: 'none' | 'purple' | 'crimson' | 'cyan' | 'gold' | 'ember' | 'emerald';
-  headGear?: 'none' | 'volt_visor' | 'flame_band' | 'phantom_eyes';
-  weapon?:
-    | 'none'
-    | 'katana'
-    | 'blood_greatsword'
-    | 'volt_spear'
-    | 'thunder_halberd'
-    | 'flame_nodachi'
-    | 'solar_greatblade'
-    | 'twin_daggers'
-    | 'void_sabers'
-    | 'dagger'
-    | 'pistol'
-    | 'sword'
-    | 'shield_sword'
-    | 'spear'
-    | 'laser_blade'
-    | 'sniper_rifle'
-    | 'neon_orb';
-  capeColor?: string;
-  bossOutfit?: BossStyleOutfit;
-  awakenedForm?: CharacterId | null;
-  jointsOverride?: SkeletonJoints;
-}
-
-function solveTwoBoneIK(
-  root: Vec2,
-  target: Vec2,
-  len1: number,
-  len2: number,
-  bendDir: number
-): Vec2 {
-  const dx = target.x - root.x;
-  const dy = target.y - root.y;
-  const dist = Math.max(0.01, Math.min(len1 + len2 - 0.01, Math.hypot(dx, dy)));
-  const baseAngle = Math.atan2(dy, dx);
-  const cosAngle = Math.max(
-    -1,
-    Math.min(1, (len1 * len1 + dist * dist - len2 * len2) / (2 * len1 * dist))
-  );
-  const angle = baseAngle + bendDir * Math.acos(cosAngle);
-  return {
-    x: root.x + Math.cos(angle) * len1,
-    y: root.y + Math.sin(angle) * len1,
-  };
-}
-
-/**
- * Computes elastic anime stickman skeleton with curved Bézier spine & expressive martial arts keyframing.
- */
 export function computeStickmanSkeleton(
   pose: StickPoseName,
   t: number,
-  walkPhase: number
+  walkPhase: number,
+  characterId?: CharacterId,
+  extra?: { vx?: number; vy?: number; awakened?: boolean }
 ): SkeletonJoints {
+  const safeT = Math.max(0, finiteOr(t, 0));
+  const safeWalk = finiteOr(walkPhase, 0);
+  if (isBasicPoseName(pose)) {
+    return computeBasicCharacterSkeleton(pose, safeT, safeWalk, characterId, extra);
+  }
+  t = safeT;
+
   let hip: Vec2 = { x: 0, y: -48 };
   let torsoLean = 0.08;
   let spineBend = 0; // positive = hunched forward, negative = arched back
@@ -215,54 +111,6 @@ export function computeStickmanSkeleton(
       motionArc = { x: -12, y: -24, r: 34, sa: 1.8, ea: 3.4 };
       break;
     }
-    case 'idle': {
-      hip = { x: 0, y: -48 + breath };
-      torsoLean = 0.1;
-      spineBend = 3;
-      footLTarget = { x: -17, y: 0 };
-      footRTarget = { x: 18, y: 0 };
-      handLTarget = { x: 10, y: -56 + breath };
-      handRTarget = { x: 24, y: -52 + breath };
-      weaponAngle = -0.45;
-      break;
-    }
-    case 'run': {
-      // Anatomically grounded anime martial-arts sprint (no straight-leg lock, natural arm counter-pump, sleek trailing blade!)
-      const k = computeRunStrideKinematics(walkPhase);
-      hip = k.hip;
-      torsoLean = k.torsoLean;
-      spineBend = k.spineBend;
-      footLTarget = k.footL;
-      footRTarget = k.footR;
-      handLTarget = k.handL;
-      handRTarget = k.handR;
-      weaponAngle = k.weaponAngle;
-      break;
-    }
-    case 'brake_skid': {
-      // Stylish anime sprint-brake skid with leaning heels
-      hip = { x: -6, y: -40 };
-      torsoLean = -0.34;
-      spineBend = -6;
-      footLTarget = { x: -14, y: 0 };
-      footRTarget = { x: 28, y: 0 };
-      handLTarget = { x: -24, y: -56 };
-      handRTarget = { x: 18, y: -52 };
-      weaponAngle = -0.7;
-      break;
-    }
-    case 'jump': {
-      const tuck = Math.min(1, t / 0.18);
-      hip = { x: 0, y: -52 - tuck * 3 };
-      torsoLean = 0.24;
-      spineBend = 7;
-      footLTarget = { x: -14, y: -20 * tuck };
-      footRTarget = { x: 18, y: -10 * tuck };
-      handLTarget = { x: -22, y: -70 };
-      handRTarget = { x: 24, y: -72 };
-      weaponAngle = -0.95;
-      break;
-    }
     case 'double_jump_flip': {
       // Fluid tucked anime front somersault in mid-air!
       const p = Math.min(1, t / 0.34);
@@ -280,28 +128,99 @@ export function computeStickmanSkeleton(
       motionArc = { x: 0, y: -50, r: 38, sa: rot - 1.4, ea: rot + 1.1 };
       break;
     }
-    case 'fall': {
-      hip = { x: 0, y: -50 };
-      torsoLean = 0.1;
-      spineBend = -5;
-      footLTarget = { x: -18, y: -10 };
-      footRTarget = { x: 12, y: -22 };
-      handLTarget = { x: -24, y: -76 };
-      handRTarget = { x: 26, y: -68 };
-      weaponAngle = -0.46;
+    case 'xuan_feng_flick_1':
+    case 'scholar_flick_1': {
+      // Hit 1: Upright composed scholar — left hand resting behind back, right wrist gentle horizontal silk flick
+      const p = Math.min(1, t / 0.19);
+      const snap = animeSwingCurve(p);
+      hip = { x: 2 + snap * 3, y: -50.5 };
+      torsoLean = 0.02 + snap * 0.04;
+      spineBend = 0.4;
+      footLTarget = { x: -13, y: 0 };
+      footRTarget = { x: 16, y: 0 };
+      handLTarget = { x: -17, y: -47 };
+      handRTarget = { x: 8 + snap * 22, y: -58 - Math.sin(p * Math.PI) * 3 };
+      weaponAngle = -0.68 + snap * 1.05;
+      motionArc = { x: 24, y: -58, r: 52, sa: -0.82, ea: 0.88 };
       break;
     }
-    case 'dash': {
-      // Ultra-low anime horizontal speed dash (ref 00:02)
-      hip = { x: 14, y: -37 };
-      torsoLean = 0.82;
-      spineBend = 11;
-      footLTarget = { x: -36, y: -9 };
-      footRTarget = { x: 20, y: -3 };
-      handLTarget = { x: -28, y: -50 };
-      handRTarget = { x: -26, y: -40 };
-      weaponAngle = -2.95;
-      motionArc = { x: -8, y: -42, r: 44, sa: 2.2, ea: 3.9 };
+    case 'xuan_feng_flick_2':
+    case 'scholar_flick_2': {
+      // Hit 2: Upright scholar — left hand forming chest seal, right wrist upward calligraphic sweep
+      const p = Math.min(1, t / 0.2);
+      const snap = animeSwingCurve(p);
+      hip = { x: 3 + snap * 3, y: -51 };
+      torsoLean = 0.01 + snap * 0.04;
+      spineBend = -0.6;
+      footLTarget = { x: -14, y: 0 };
+      footRTarget = { x: 17, y: 0 };
+      handLTarget = { x: 8, y: -62 };
+      handRTarget = { x: 14 + snap * 14, y: -52 - snap * 24 };
+      weaponAngle = 0.58 - snap * 2.05;
+      motionArc = { x: 22, y: -60, r: 56, sa: -1.95, ea: 0.68 };
+      break;
+    }
+    case 'xuan_feng_point_3':
+    case 'scholar_point_3': {
+      // Hit 3: Poised brush-tip point into thin air — left hand behind back, right hand extends jade brush gracefully
+      const p = Math.min(1, t / 0.21);
+      const snap = animeSwingCurve(p);
+      hip = { x: 4 + snap * 3, y: -50.2 };
+      torsoLean = 0.04 + snap * 0.04;
+      spineBend = 0.6;
+      footLTarget = { x: -15, y: 0 };
+      footRTarget = { x: 19, y: 0 };
+      handLTarget = { x: -18, y: -46 };
+      handRTarget = { x: 14 + snap * 21, y: -62 + Math.sin(p * Math.PI) * 2 };
+      weaponAngle = -0.06 + (1 - snap) * -0.18;
+      motionArc = { x: 30, y: -60, r: 44, sa: -0.42, ea: 0.42 };
+      break;
+    }
+    case 'xuan_feng_palm_4':
+    case 'scholar_palm_4': {
+      // Hit 4: Upright composed open-palm gentle push forward with chest hand-seal & brush poised behind shoulder
+      const p = Math.min(1, t / 0.29);
+      const snap = animeSwingCurve(p);
+      hip = { x: 3 + snap * 4, y: -49.8 };
+      torsoLean = 0.05 + snap * 0.05;
+      spineBend = 0.5;
+      footLTarget = { x: -16, y: 0 };
+      footRTarget = { x: 21, y: 0 };
+      handLTarget = { x: 12 + snap * 22, y: -58 };
+      handRTarget = { x: 2 + snap * 6, y: -62 };
+      weaponAngle = -2.08 + snap * 0.26;
+      motionArc = { x: 28, y: -58, r: 62, sa: -1.65, ea: 1.05 };
+      break;
+    }
+    case 'scholar_dash_slash': {
+      // Upright poised scholar dash-cut — serene posture with swift horizontal brush sweep
+      const p = Math.min(1, t / 0.23);
+      const snap = animeSwingCurve(p);
+      hip = { x: 10 + snap * 6, y: -46 };
+      torsoLean = 0.12 + snap * 0.02;
+      spineBend = 1.2;
+      footLTarget = { x: -24, y: -3 };
+      footRTarget = { x: 22, y: 0 };
+      handLTarget = { x: -18, y: -48 };
+      handRTarget = { x: 10 + snap * 28, y: -58 };
+      weaponAngle = -0.14 + (1 - snap) * -1.08;
+      motionArc = { x: 22, y: -56, r: 58, sa: -0.75, ea: 0.65 };
+      break;
+    }
+    case 'scholar_parry_counter': {
+      // Upright poised scholar parry counter — chest hand-seal and crisp counter-flick
+      const p = Math.min(1, t / 0.25);
+      const snap = animeSwingCurve(p);
+      const swing = -1.85 + snap * 2.9;
+      hip = { x: 6 + snap * 4, y: -49 };
+      torsoLean = 0.04 + snap * 0.06;
+      spineBend = 0.6;
+      footLTarget = { x: -18, y: 0 };
+      footRTarget = { x: 22, y: 0 };
+      handLTarget = { x: 8, y: -60 };
+      handRTarget = { x: 16 + Math.cos(swing) * 24, y: -60 + Math.sin(swing) * 18 };
+      weaponAngle = swing * 0.85;
+      motionArc = { x: 22, y: -58, r: 62, sa: -1.65, ea: 1.05 };
       break;
     }
     case 'attack_1': {
@@ -587,18 +506,6 @@ export function computeStickmanSkeleton(
       motionArc = { x: 18, y: -52, r: 68, sa: -2.4, ea: 1.35 };
       break;
     }
-    case 'parry': {
-      // Crisp vertical blade guard stance (ref 00:05 & 00:32)
-      hip = { x: 2, y: -44 };
-      torsoLean = -0.06;
-      spineBend = 3;
-      footLTarget = { x: -22, y: 0 };
-      footRTarget = { x: 24, y: 0 };
-      handLTarget = { x: 16, y: -60 };
-      handRTarget = { x: 24, y: -68 };
-      weaponAngle = -1.42;
-      break;
-    }
     case 'cryo_cast': {
       // Low martial palm-thrust summoning crystal monolith (ref 00:09–00:11)
       hip = { x: 4, y: -42 };
@@ -723,17 +630,212 @@ export function computeStickmanSkeleton(
       break;
     }
     case 'spear_thrust': {
+      const p = Math.min(1, t / 0.18);
+      const snap = animeSwingCurve(p);
+      hip = { x: 8 + snap * 14, y: -42 };
+      torsoLean = 0.34 + snap * 0.32;
+      spineBend = 9;
+      footLTarget = { x: -32, y: 0 };
+      footRTarget = { x: 32, y: 0 };
+      handLTarget = { x: -4 + snap * 24, y: -58 };
+      handRTarget = { x: 16 + snap * 34, y: -58 };
+      weaponAngle = -0.02;
+      break;
+    }
+    case 'spear_jab_low': {
+      // Raijin knee-drop long-reach ankle/midsection lightning spear poke!
+      const p = Math.min(1, t / 0.19);
+      const snap = animeSwingCurve(p);
+      hip = { x: 10 + snap * 14, y: -35 };
+      torsoLean = 0.56 + snap * 0.24;
+      spineBend = 11;
+      footLTarget = { x: -36, y: 0 };
+      footRTarget = { x: 30, y: 0 };
+      handLTarget = { x: 0 + snap * 22, y: -48 };
+      handRTarget = { x: 18 + snap * 36, y: -44 };
+      weaponAngle = 0.12;
+      break;
+    }
+    case 'spear_flurry_thrust': {
+      // Raijin Hundred-Spear Rapid Multi-Jab (piston-like lightning stabs at 3 angles!)
+      const p = Math.min(1, t / 0.28);
+      const jab = Math.sin(p * Math.PI * 5.0);
+      const aim = Math.sin(p * Math.PI * 3.0) * 0.24;
+      hip = { x: 12, y: -41 };
+      torsoLean = 0.44;
+      spineBend = 8;
+      footLTarget = { x: -32, y: 0 };
+      footRTarget = { x: 30, y: 0 };
+      handLTarget = { x: 4 + jab * 14, y: -56 + aim * 18 };
+      handRTarget = { x: 24 + jab * 24, y: -56 + aim * 24 };
+      weaponAngle = aim;
+      break;
+    }
+    case 'spear_sky_drill': {
+      // Raijin upward diagonal spiral spear launcher!
       const p = Math.min(1, t / 0.22);
       const snap = animeSwingCurve(p);
-      hip = { x: 6 + snap * 10, y: -43 };
-      torsoLean = 0.28 + snap * 0.28;
+      hip = { x: 8 + snap * 8, y: -46 - Math.max(0, snap) * 18 };
+      torsoLean = 0.12 - snap * 0.34;
+      spineBend = -6;
+      footLTarget = { x: -20, y: -6 * Math.max(0, snap) };
+      footRTarget = { x: 24, y: -18 * Math.max(0, snap) };
+      handLTarget = { x: 6 + snap * 16, y: -62 - snap * 18 };
+      handRTarget = { x: 18 + snap * 26, y: -70 - snap * 24 };
+      weaponAngle = -0.68;
+      break;
+    }
+    case 'spear_dragon_pierce': {
+      // Raijin Combo 6: Deep coil pull-back -> full-extension sonic Dragon Piercer lunge!
+      const p = Math.min(1, t / 0.32);
+      const snap = p < 0.28 ? -0.45 * (p / 0.28) : animeSwingCurve((p - 0.28) / 0.72);
+      hip = { x: 10 + snap * 20, y: -36 };
+      torsoLean = 0.35 + Math.max(0, snap) * 0.55;
+      spineBend = 12;
+      footLTarget = { x: -40, y: 0 };
+      footRTarget = { x: 34, y: 0 };
+      handLTarget = { x: -8 + snap * 30, y: -52 };
+      handRTarget = { x: 8 + snap * 42, y: -52 };
+      weaponAngle = 0;
+      break;
+    }
+    case 'spear_air_dive': {
+      // Raijin mid-air 45-degree downward lightning spear plunge!
+      const p = Math.min(1, t / 0.24);
+      const snap = animeSwingCurve(p);
+      hip = { x: 8, y: -50 };
+      torsoLean = 0.68;
+      spineBend = 10;
+      footLTarget = { x: -24, y: -26 };
+      footRTarget = { x: 14, y: -18 };
+      handLTarget = { x: 8 + snap * 16, y: -54 + snap * 12 };
+      handRTarget = { x: 20 + snap * 26, y: -44 + snap * 18 };
+      weaponAngle = 0.62;
+      break;
+    }
+    case 'nodachi_drag_cleave': {
+      // Kagura two-handed heavy ground-dragging molten odachi cleave!
+      const p = Math.min(1, t / 0.27);
+      const snap = p < 0.3 ? -0.35 * (p / 0.3) : animeSwingCurve((p - 0.3) / 0.7);
+      const swing = 2.25 - snap * 3.1;
+      hip = { x: 4 + Math.max(0, snap) * 14, y: -37 };
+      torsoLean = 0.58 - Math.max(0, snap) * 0.28;
+      spineBend = 12;
+      footLTarget = { x: -32, y: 0 };
+      footRTarget = { x: 34, y: 0 };
+      // Both hands grip the long Nodachi hilt together!
+      handLTarget = { x: 10 + Math.cos(swing) * 24, y: -48 + Math.sin(swing) * 20 };
+      handRTarget = { x: 14 + Math.cos(swing) * 30, y: -48 + Math.sin(swing) * 24 };
+      weaponAngle = swing;
+      break;
+    }
+    case 'nodachi_overhead_slam': {
+      // Kagura colossal two-handed overhead execution slam that craters the ground!
+      const p = Math.min(1, t / 0.32);
+      const snap = p < 0.32 ? -0.3 * (p / 0.32) : animeSwingCurve((p - 0.32) / 0.68);
+      const swing = -2.55 + Math.max(-0.25, snap) * 3.45;
+      hip = { x: 6 + Math.max(0, snap) * 14, y: -45 + Math.max(0, snap) * 9 };
+      torsoLean = -0.24 + Math.max(0, snap) * 0.92;
+      spineBend = 14;
+      footLTarget = { x: -32, y: 0 };
+      footRTarget = { x: 36, y: 0 };
+      handLTarget = { x: 10 + Math.cos(swing) * 24, y: -60 + Math.sin(swing) * 24 };
+      handRTarget = { x: 15 + Math.cos(swing) * 32, y: -60 + Math.sin(swing) * 28 };
+      weaponAngle = swing;
+      break;
+    }
+    case 'nodachi_tornado_spin': {
+      // Kagura wide 360-degree two-handed horizontal flame cyclone sweep!
+      const p = Math.min(1, t / 0.29);
+      const spin = -Math.PI + p * Math.PI * 2.2;
+      const reachX = Math.cos(spin);
+      hip = { x: 8 * reachX, y: -41 };
+      torsoLean = 0.36 * reachX;
       spineBend = 9;
       footLTarget = { x: -28, y: 0 };
       footRTarget = { x: 30, y: 0 };
-      handLTarget = { x: -2 + snap * 26, y: -62 };
-      handRTarget = { x: 14 + snap * 28, y: -62 };
-      weaponAngle = -0.04;
-      motionArc = { x: 30, y: -60, r: 44, sa: -0.45, ea: 0.45 };
+      handLTarget = { x: reachX * 26, y: -52 };
+      handRTarget = { x: reachX * 34, y: -52 };
+      weaponAngle = reachX >= 0 ? 0.06 : Math.PI - 0.06;
+      break;
+    }
+    case 'nodachi_earth_splitter': {
+      // Kagura Combo 6: Leaping two-handed meteoric Nodachi earth-splitter!
+      const p = Math.min(1, t / 0.38);
+      const snap = p < 0.34 ? -0.35 * (p / 0.34) : animeSwingCurve((p - 0.34) / 0.66);
+      const swing = -2.75 + Math.max(-0.3, snap) * 3.85;
+      const airLift = Math.sin(Math.min(1, p * 1.2) * Math.PI) * 18;
+      hip = { x: 8 + Math.max(0, snap) * 16, y: -46 - airLift + Math.max(0, snap) * 12 };
+      torsoLean = -0.3 + Math.max(0, snap) * 1.05;
+      spineBend = 15;
+      footLTarget = { x: -34, y: -airLift * 0.4 };
+      footRTarget = { x: 36, y: -airLift * 0.2 };
+      handLTarget = { x: 12 + Math.cos(swing) * 26, y: -62 - airLift * 0.5 + Math.sin(swing) * 26 };
+      handRTarget = { x: 18 + Math.cos(swing) * 34, y: -62 - airLift * 0.5 + Math.sin(swing) * 30 };
+      weaponAngle = swing;
+      break;
+    }
+    case 'dagger_reverse_slice': {
+      // Zero reverse-grip twin-dagger wide outward scissor rip!
+      const p = Math.min(1, t / 0.15);
+      const snap = animeSwingCurve(p);
+      hip = { x: 12 + snap * 8, y: -38 };
+      torsoLean = 0.68;
+      spineBend = 10;
+      footLTarget = { x: -30, y: 0 };
+      footRTarget = { x: 28, y: 0 };
+      handLTarget = { x: 28 - snap * 48, y: -56 - snap * 8 };
+      handRTarget = { x: -12 + snap * 48, y: -50 + snap * 6 };
+      weaponAngle = 2.65 - snap * 2.4;
+      break;
+    }
+    case 'dagger_buzzsaw_flip': {
+      // Zero acrobatic mid-air forward buzzsaw somersault with twin blades extended!
+      const p = Math.min(1, t / 0.21);
+      const rot = p * Math.PI * 2.4;
+      const c = Math.cos(rot);
+      const s = Math.sin(rot);
+      hip = { x: 6, y: -54 };
+      torsoLean = rot;
+      spineBend = 14;
+      footLTarget = { x: -18 * c, y: -36 + 18 * s };
+      footRTarget = { x: 18 * c, y: -36 - 18 * s };
+      handLTarget = { x: -30 * c, y: -54 - 26 * s };
+      handRTarget = { x: 30 * c, y: -54 + 26 * s };
+      weaponAngle = rot + 0.4;
+      break;
+    }
+    case 'dagger_phantom_blitz': {
+      // Zero hyper-speed 4-cut alternating left/right assassin twin-dagger blitz!
+      const p = Math.min(1, t / 0.22);
+      const cyc = Math.sin(p * Math.PI * 4.0);
+      const cycOpp = -cyc;
+      hip = { x: 15, y: -36 };
+      torsoLean = 0.78;
+      spineBend = 11;
+      footLTarget = { x: -34, y: 0 };
+      footRTarget = { x: 28, y: 0 };
+      handLTarget = { x: 18 + cycOpp * 26, y: -54 + cyc * 16 };
+      handRTarget = { x: 20 + cyc * 28, y: -48 - cyc * 16 };
+      weaponAngle = cyc * 1.15;
+      break;
+    }
+    case 'katana_zantetsu_cut': {
+      // Kuro Combo 6: Lightning-fast Iaido Horizon Sever -> crisp snap-resheath stance!
+      const p = Math.min(1, t / 0.29);
+      const snap = p < 0.65 ? animeSwingCurve(p / 0.65) : 1;
+      const resheath = p >= 0.65 ? (p - 0.65) / 0.35 : 0;
+      hip = { x: 14 + snap * 8, y: -36 };
+      torsoLean = 0.72 - resheath * 0.35;
+      spineBend = 10;
+      footLTarget = { x: -36, y: 0 };
+      footRTarget = { x: 32, y: 0 };
+      handLTarget = { x: -8, y: -40 }; // left thumb clicks tsuba guard at hip!
+      handRTarget = {
+        x: (1 - resheath) * (-6 + snap * 46) + resheath * 2,
+        y: (1 - resheath) * -48 + resheath * -40,
+      };
+      weaponAngle = (1 - resheath) * (-2.6 + snap * 2.8) + resheath * -2.85;
       break;
     }
     case 'laser_slash': {
@@ -764,85 +866,165 @@ export function computeStickmanSkeleton(
     }
   }
 
-  const torsoLen = 34;
-  const neck: Vec2 = {
-    x: hip.x + Math.sin(torsoLean) * torsoLen,
-    y: hip.y - Math.cos(torsoLean) * torsoLen,
-  };
-  const spineMid: Vec2 = {
-    x: (hip.x + neck.x) * 0.5 + spineBend,
-    y: (hip.y + neck.y) * 0.5,
-  };
-  const head: Vec2 = {
-    x: neck.x + Math.sin(torsoLean) * 13,
-    y: neck.y - Math.cos(torsoLean) * 13,
-  };
-
-  const shoulderL: Vec2 = { x: neck.x - 4, y: neck.y + 5 };
-  const shoulderR: Vec2 = { x: neck.x + 4, y: neck.y + 5 };
-
-  const kneeL = solveTwoBoneIK(hip, footLTarget, 26, 26, -1);
-  const kneeR = solveTwoBoneIK(hip, footRTarget, 26, 26, -1);
-  const elbowL = solveTwoBoneIK(shoulderL, handLTarget, 19, 19, 1);
-  const elbowR = solveTwoBoneIK(shoulderR, handRTarget, 19, 19, 1);
-
-  return {
+  return buildSkeletonFromDraft({
     hip,
-    spineMid,
-    neck,
-    head,
-    shoulderL,
-    elbowL,
-    handL: handLTarget,
-    shoulderR,
-    elbowR,
-    handR: handRTarget,
-    kneeL,
+    torsoLean,
+    spineBend,
     footL: footLTarget,
-    kneeR,
     footR: footRTarget,
+    handL: handLTarget,
+    handR: handRTarget,
     weaponAngle,
     motionArc,
-  };
+  });
 }
 
-function strokeSkeletonLimbs(
+export function strokeSkeletonLimbs(
   ctx: CanvasRenderingContext2D,
   joints: SkeletonJoints,
   lw: number,
   headR: number,
   color: string,
   drawBackOnly = false,
-  drawFrontOnly = false
+  drawFrontOnly = false,
+  shadowColor?: string,
+  rimColor?: string
 ): void {
-  ctx.strokeStyle = color;
-  ctx.fillStyle = color;
-  ctx.lineCap = 'round';
-  ctx.lineJoin = 'round';
+  const safeLw = Math.max(1, finiteOr(lw, 9.5));
+  const safeHeadR = Math.max(1, finiteOr(headR, 12));
 
   if (!drawFrontOnly) {
-    ctx.lineWidth = lw * 0.94;
-    drawLimb(ctx, joints.hip, joints.kneeL, joints.footL);
-    drawLimb(ctx, joints.shoulderL, joints.elbowL, joints.handL);
+    // Back leg & arm
+    drawInkBrushLimb(
+      ctx,
+      joints.hip.x,
+      joints.hip.y,
+      joints.kneeL.x,
+      joints.kneeL.y,
+      safeLw * 1.1,
+      safeLw * 0.88,
+      color,
+      shadowColor,
+      rimColor
+    );
+    drawInkBrushLimb(
+      ctx,
+      joints.kneeL.x,
+      joints.kneeL.y,
+      joints.footL.x,
+      joints.footL.y,
+      safeLw * 0.88,
+      safeLw * 0.56,
+      color,
+      shadowColor,
+      rimColor
+    );
 
-    // Curved Bézier Spine Torso
-    ctx.lineWidth = lw * 1.12;
-    ctx.beginPath();
-    ctx.moveTo(joints.hip.x, joints.hip.y);
-    ctx.quadraticCurveTo(joints.spineMid.x, joints.spineMid.y, joints.neck.x, joints.neck.y);
-    ctx.stroke();
+    drawInkBrushLimb(
+      ctx,
+      joints.shoulderL.x,
+      joints.shoulderL.y,
+      joints.elbowL.x,
+      joints.elbowL.y,
+      safeLw * 0.98,
+      safeLw * 0.8,
+      color,
+      shadowColor,
+      rimColor
+    );
+    drawInkBrushLimb(
+      ctx,
+      joints.elbowL.x,
+      joints.elbowL.y,
+      joints.handL.x,
+      joints.handL.y,
+      safeLw * 0.8,
+      safeLw * 0.56,
+      color,
+      shadowColor,
+      rimColor
+    );
 
-    // Head
-    ctx.beginPath();
-    ctx.arc(joints.head.x, joints.head.y, headR, 0, Math.PI * 2);
-    ctx.fill();
+    // Sculpted V-tapered Ink-Wash Torso along curved Bézier spine
+    drawInkBrushTorso(
+      ctx,
+      joints.hip.x,
+      joints.hip.y,
+      joints.spineMid.x,
+      joints.spineMid.y,
+      joints.neck.x,
+      joints.neck.y,
+      safeLw * 1.44,
+      safeLw * 0.96,
+      color,
+      shadowColor,
+      rimColor
+    );
+
+    // Head with optional sumi-e shadow & directional rim light
+    drawInkHead(
+      ctx,
+      joints.head.x,
+      joints.head.y,
+      safeHeadR,
+      '',
+      color,
+      shadowColor,
+      rimColor
+    );
   }
 
   if (!drawBackOnly) {
-    ctx.lineWidth = lw;
-    drawLimb(ctx, joints.hip, joints.kneeR, joints.footR);
-    ctx.lineWidth = lw * 0.96;
-    drawLimb(ctx, joints.shoulderR, joints.elbowR, joints.handR);
+    // Front leg & arm
+    drawInkBrushLimb(
+      ctx,
+      joints.hip.x,
+      joints.hip.y,
+      joints.kneeR.x,
+      joints.kneeR.y,
+      safeLw * 1.16,
+      safeLw * 0.92,
+      color,
+      shadowColor,
+      rimColor
+    );
+    drawInkBrushLimb(
+      ctx,
+      joints.kneeR.x,
+      joints.kneeR.y,
+      joints.footR.x,
+      joints.footR.y,
+      safeLw * 0.92,
+      safeLw * 0.6,
+      color,
+      shadowColor,
+      rimColor
+    );
+
+    drawInkBrushLimb(
+      ctx,
+      joints.shoulderR.x,
+      joints.shoulderR.y,
+      joints.elbowR.x,
+      joints.elbowR.y,
+      safeLw * 1.04,
+      safeLw * 0.84,
+      color,
+      shadowColor,
+      rimColor
+    );
+    drawInkBrushLimb(
+      ctx,
+      joints.elbowR.x,
+      joints.elbowR.y,
+      joints.handR.x,
+      joints.handR.y,
+      safeLw * 0.84,
+      safeLw * 0.6,
+      color,
+      shadowColor,
+      rimColor
+    );
   }
 }
 
@@ -850,148 +1032,728 @@ export function renderStickman(
   ctx: CanvasRenderingContext2D,
   opts: StickmanRenderOptions
 ): SkeletonJoints {
-  const joints =
-    opts.jointsOverride ?? computeStickmanSkeleton(opts.pose, opts.poseTime, opts.walkPhase);
-  const isMono = Boolean(opts.silhouette || opts.whiteFlash);
+  const safeX = finiteOr(opts.x, 0);
+  const safeY = finiteOr(opts.y, 0);
+  const safePoseTime = finiteOr(opts.poseTime, 0);
+  const safeWalkPhase = finiteOr(opts.walkPhase, 0);
+  const safeScaleX = finiteOr(opts.scaleX, 1);
+  const safeScaleY = finiteOr(opts.scaleY, 1);
+  const facing = opts.facing === -1 ? -1 : 1;
 
-  // 1. Writhing Black Ink-Flame / Shadow Puddle at Hero's Feet (ref 00:00–00:46!)
+  const joints =
+    opts.jointsOverride ??
+    computeStickmanSkeleton(opts.pose, safePoseTime, safeWalkPhase, opts.characterId, {
+      vx: opts.vx,
+      vy: opts.vy,
+      awakened: opts.awakened ?? Boolean(opts.awakenedForm),
+    });
+
+  const isMono = Boolean(opts.silhouette || opts.whiteFlash);
+  const isHitFlash = !isMono && finiteOr(opts.hitFlash, 0) > 0;
+  const isAwakened = Boolean(opts.awakened || opts.awakenedForm);
+  const inkPalette = getSkinInkPalette(
+    opts.characterId,
+    opts.skinId,
+    isAwakened,
+    opts.bodyColor,
+    opts.glowColor
+  );
+
+  // 1. Writhing Sumi-e Ink-Flame / Shadow Puddle at Fighter's Feet
   if (opts.darkAura && opts.darkAura !== 'none' && !isMono) {
-    renderDarkInkAura(ctx, opts.x, opts.y, opts.poseTime, opts.darkAura);
+    renderDarkInkAura(
+      ctx,
+      safeX,
+      safeY,
+      safePoseTime,
+      opts.darkAura,
+      opts.skinId,
+      opts.auraRimColor,
+      opts.auraPuddleColor,
+      opts.characterId,
+      opts.entityTier,
+      opts.enragePhase
+    );
   }
 
-  // 2. Chunky Cel-Shaded Flowing Verlet Scarf (with bold black ink outline!)
+  // 2. Smooth Quadratic Ink-Wash Flowing Verlet Scarf with Swallowtail Tip
   if (opts.scarf && opts.scarf.length > 1 && !isMono) {
-    renderCelScarf(ctx, opts.scarf, opts.scarfPrimary ?? '#2563eb', opts.scarfHighlight ?? '#60a5fa');
+    renderCelScarf(
+      ctx,
+      opts.scarf,
+      opts.scarfPrimary ?? inkPalette.clothPrimary,
+      opts.scarfHighlight ?? inkPalette.clothHighlight
+    );
   }
 
   ctx.save();
-  ctx.translate(opts.x, opts.y);
-  ctx.scale(opts.facing * (opts.scaleX ?? 1), opts.scaleY ?? 1);
+  try {
+    ctx.translate(safeX, safeY);
+    ctx.scale(facing * safeScaleX, safeScaleY);
 
-  // 3. Fable Aerial White Skate-Arc Trails beneath feet (ref 00:43–00:46!)
-  if (opts.bossOutfit === 'fable' && !isMono) {
-    ctx.save();
-    ctx.strokeStyle = '#ffffff';
-    ctx.lineWidth = 3.5;
-    ctx.beginPath();
-    ctx.moveTo(joints.footL.x - 16, joints.footL.y + 6);
-    ctx.quadraticCurveTo(10, joints.footL.y + 14, joints.footR.x + 28, joints.footR.y + 34);
-    ctx.stroke();
-    ctx.strokeStyle = 'rgba(132, 204, 22, 0.55)';
-    ctx.lineWidth = 1.8;
-    ctx.beginPath();
-    ctx.moveTo(joints.footL.x - 10, joints.footL.y + 11);
-    ctx.quadraticCurveTo(14, joints.footL.y + 20, joints.footR.x + 22, joints.footR.y + 38);
-    ctx.stroke();
-    ctx.restore();
-  }
+    // 3. Fable Aerial White Skate-Arc Trails beneath feet
+    if (opts.bossOutfit === 'fable' && !isMono) {
+      ctx.save();
+      try {
+        ctx.strokeStyle = '#ffffff';
+        ctx.lineWidth = 3.5;
+        ctx.lineCap = 'round';
+        ctx.beginPath();
+        ctx.moveTo(joints.footL.x - 16, joints.footL.y + 6);
+        ctx.quadraticCurveTo(10, joints.footL.y + 14, joints.footR.x + 28, joints.footR.y + 34);
+        ctx.stroke();
+        ctx.strokeStyle = 'rgba(132, 204, 22, 0.55)';
+        ctx.lineWidth = 1.8;
+        ctx.beginPath();
+        ctx.moveTo(joints.footL.x - 10, joints.footL.y + 11);
+        ctx.quadraticCurveTo(14, joints.footL.y + 20, joints.footR.x + 22, joints.footR.y + 38);
+        ctx.stroke();
+      } finally {
+        ctx.restore();
+      }
+    }
 
-  // 4. Sweeping Anime Speed-Arc Motion Lines (ref 00:02–00:06 & 00:23–00:26!)
-  if (joints.motionArc && !isMono) {
-    const a = joints.motionArc;
-    ctx.save();
-    ctx.strokeStyle = 'rgba(226, 232, 240, 0.34)';
-    ctx.lineWidth = 3;
-    ctx.beginPath();
-    ctx.arc(a.x, a.y, a.r, a.sa, a.ea);
-    ctx.stroke();
-    ctx.strokeStyle = 'rgba(255, 255, 255, 0.22)';
-    ctx.lineWidth = 1.6;
-    ctx.beginPath();
-    ctx.arc(a.x, a.y, a.r + 8, a.sa + 0.15, a.ea - 0.15);
-    ctx.stroke();
-    ctx.restore();
-  }
+    // 4. Sweeping Anime Speed-Arc Motion Lines (suppressed & replaced by polygonal mirror-fractures for Mirage)
+    if (joints.motionArc && !isMono) {
+      const a = joints.motionArc;
+      const ax = finiteOr(a.x, 0);
+      const ay = finiteOr(a.y, -48);
+      const ar = Math.max(1, finiteOr(a.r, 40));
+      const sa = finiteOr(a.sa, -1);
+      const ea = finiteOr(a.ea, 1);
+      ctx.save();
+      try {
+        if (opts.characterId === 'mirage') {
+          const isVoid = opts.skinId === 'void_shatterer';
+          const primaryCol = isVoid ? '#f43f5e' : '#c084fc';
+          const glintCol = isVoid ? '#38bdf8' : '#f1f5f9';
+          const steps = 4;
 
-  // 5. Flowing Cel-Shaded Red Boss Cape (Opus) / Black Cloak (Sol)
-  if ((opts.capeColor || opts.bossOutfit === 'sol') && !isMono) {
-    const wave = Math.sin(opts.poseTime * 9) * 8;
-    ctx.save();
-    ctx.fillStyle = opts.bossOutfit === 'sol' ? '#181a20' : opts.capeColor!;
-    ctx.strokeStyle = '#0c0d12';
-    ctx.lineWidth = 2.8;
-    ctx.beginPath();
-    ctx.moveTo(joints.neck.x - 4, joints.neck.y + 2);
-    ctx.quadraticCurveTo(joints.hip.x - 30, joints.hip.y - 6 + wave * 0.5, joints.hip.x - 48, -4 + wave);
-    ctx.lineTo(joints.hip.x - 16, -2 + wave * 0.4);
-    ctx.lineTo(joints.neck.x + 4, joints.neck.y + 8);
-    ctx.closePath();
-    ctx.fill();
-    ctx.stroke();
-    ctx.restore();
-  }
+          // Jagged spatial fracture crack polyline (no circular ctx.arc)
+          ctx.strokeStyle = colorWithAlpha(glintCol, 0.55);
+          ctx.lineWidth = 2.0;
+          ctx.lineJoin = 'miter';
+          ctx.beginPath();
+          for (let i = 0; i <= steps; i++) {
+            const frac = i / steps;
+            const ang = sa + (ea - sa) * frac;
+            const rad = ar + (i % 2 === 0 ? 5 : -6);
+            const px = ax + Math.cos(ang) * rad;
+            const py = ay + Math.sin(ang) * rad;
+            if (i === 0) ctx.moveTo(px, py);
+            else ctx.lineTo(px, py);
+          }
+          ctx.stroke();
 
-  // 5B. Distinct Awakened Visual Form Back Attachments (Wings / Raijin Taiko Ring / Orbiting Blood Blades / Void Kunai!)
-  if (opts.awakenedForm && !isMono) {
-    renderAwakenedBackForm(ctx, joints, opts.awakenedForm, opts.poseTime);
-  }
+          // Sharp polygonal mirror-shard glints along the motion fracture
+          for (let i = 0; i < 3; i++) {
+            const frac = 0.2 + i * 0.3;
+            const ang = sa + (ea - sa) * frac;
+            const sx = ax + Math.cos(ang) * (ar + (i === 1 ? 7 : -2));
+            const sy = ay + Math.sin(ang) * (ar + (i === 1 ? 7 : -2));
+            ctx.save();
+            try {
+              ctx.translate(sx, sy);
+              ctx.rotate(ang + Math.PI * 0.5);
+              ctx.fillStyle = colorWithAlpha(i === 1 ? glintCol : primaryCol, 0.72);
+              ctx.strokeStyle = '#0b0c10';
+              ctx.lineWidth = 1.4;
+              ctx.beginPath();
+              ctx.moveTo(9, 0);
+              ctx.lineTo(0, -3.2);
+              ctx.lineTo(-7, 0);
+              ctx.lineTo(0, 3.2);
+              ctx.closePath();
+              ctx.fill();
+              ctx.stroke();
+            } finally {
+              ctx.restore();
+            }
+          }
+        } else if (opts.characterId === 'chrono') {
+          const isSov = opts.skinId === 'chrono_sovereign';
+          const arcPrimary = isSov ? '#f59e0b' : '#2dd4bf';
+          const arcRim = isSov ? '#38bdf8' : '#fef08a';
 
-  const lw = opts.lineWidth ?? 9.5;
-  const headR = opts.headRadius ?? 12.2;
-  const fillColor = opts.silhouette
-    ? '#07080b'
-    : opts.whiteFlash
-      ? '#ffffff'
-      : (opts.hitFlash ?? 0) > 0
+          ctx.strokeStyle = colorWithAlpha(arcPrimary, 0.56);
+          ctx.lineWidth = 2.8;
+          ctx.lineCap = 'round';
+          ctx.beginPath();
+          ctx.arc(ax, ay, ar, sa, ea);
+          ctx.stroke();
+
+          ctx.strokeStyle = colorWithAlpha(arcRim, 0.45);
+          ctx.lineWidth = 1.5;
+          ctx.beginPath();
+          ctx.arc(ax, ay, ar + 7, sa + 0.12, ea - 0.12);
+          ctx.stroke();
+
+          // Radial clock-dial ticks along arc
+          ctx.strokeStyle = colorWithAlpha(arcRim, 0.75);
+          ctx.lineWidth = 1.4;
+          for (let i = 0; i <= 4; i++) {
+            const ang = sa + (ea - sa) * (i / 4);
+            ctx.beginPath();
+            ctx.moveTo(ax + Math.cos(ang) * (ar - 4), ay + Math.sin(ang) * (ar - 4));
+            ctx.lineTo(ax + Math.cos(ang) * (ar + 9), ay + Math.sin(ang) * (ar + 9));
+            ctx.stroke();
+          }
+        } else if (opts.characterId === 'mactien' && opts.skinId === 'xuan_feng_sage') {
+          // Ink-wash + jade-teal double silk motion arc with peach petal flecks & 4-point star glint
+          ctx.strokeStyle = colorWithAlpha('#1e293b', 0.42);
+          ctx.lineWidth = 3.2;
+          ctx.lineCap = 'round';
+          ctx.beginPath();
+          ctx.arc(ax, ay, ar, sa, ea);
+          ctx.stroke();
+
+          ctx.strokeStyle = colorWithAlpha('#5eead4', 0.64);
+          ctx.lineWidth = 2.0;
+          ctx.beginPath();
+          ctx.arc(ax, ay, ar + 1, sa + 0.04, ea - 0.04);
+          ctx.stroke();
+
+          ctx.strokeStyle = colorWithAlpha('#f8fafc', 0.78);
+          ctx.lineWidth = 1.15;
+          ctx.beginPath();
+          ctx.arc(ax, ay, ar + 6, sa + 0.14, ea - 0.14);
+          ctx.stroke();
+
+          // 2 delicate peach blossom petal flecks along arc
+          for (let i = 0; i < 2; i++) {
+            const pAng = sa + (ea - sa) * (0.28 + i * 0.44);
+            const px = ax + Math.cos(pAng) * (ar + 7);
+            const py = ay + Math.sin(pAng) * (ar + 7);
+            ctx.save();
+            try {
+              ctx.translate(px, py);
+              ctx.rotate(pAng + 0.6);
+              ctx.fillStyle = colorWithAlpha('#fda4af', 0.85);
+              ctx.strokeStyle = colorWithAlpha('#1e293b', 0.48);
+              ctx.lineWidth = 0.65;
+              ctx.beginPath();
+              ctx.ellipse(0, 0, 2.8, 1.5, 0, 0, Math.PI * 2);
+              ctx.fill();
+              ctx.stroke();
+            } finally {
+              ctx.restore();
+            }
+          }
+
+          // Crisp 4-point star glint near leading tip
+          const starAng = ea - (ea - sa) * 0.12;
+          const sx0 = ax + Math.cos(starAng) * (ar + 3);
+          const sy0 = ay + Math.sin(starAng) * (ar + 3);
+          const rOut = 4.6;
+          const rIn = 1.15;
+          ctx.fillStyle = colorWithAlpha('#f0fdfa', 0.9);
+          ctx.beginPath();
+          ctx.moveTo(sx0, sy0 - rOut);
+          ctx.lineTo(sx0 + rIn, sy0 - rIn);
+          ctx.lineTo(sx0 + rOut, sy0);
+          ctx.lineTo(sx0 + rIn, sy0 + rIn);
+          ctx.lineTo(sx0, sy0 + rOut);
+          ctx.lineTo(sx0 - rIn, sy0 + rIn);
+          ctx.lineTo(sx0 - rOut, sy0);
+          ctx.lineTo(sx0 - rIn, sy0 - rIn);
+          ctx.closePath();
+          ctx.fill();
+        } else {
+          ctx.strokeStyle = 'rgba(226, 232, 240, 0.34)';
+          ctx.lineWidth = 3;
+          ctx.lineCap = 'round';
+          ctx.beginPath();
+          ctx.arc(ax, ay, ar, sa, ea);
+          ctx.stroke();
+          ctx.strokeStyle = 'rgba(255, 255, 255, 0.22)';
+          ctx.lineWidth = 1.6;
+          ctx.beginPath();
+          ctx.arc(ax, ay, ar + 8, sa + 0.15, ea - 0.15);
+          ctx.stroke();
+        }
+      } finally {
+        ctx.restore();
+      }
+    }
+
+    // 4A. Per-Skin Attack Swing Aura Burst around fighter during active strike
+    if (
+      opts.attackProgress !== undefined &&
+      Number.isFinite(opts.attackProgress) &&
+      opts.attackProgress > 0 &&
+      opts.attackProgress < 1 &&
+      !isMono
+    ) {
+      renderAttackSwingAura(ctx, joints, opts);
+    }
+
+    // 5. Flowing Ink-Wash Boss Cape / Cloak
+    if ((opts.capeColor || opts.bossOutfit === 'sol') && !isMono) {
+      const wave = Math.sin(safePoseTime * 9) * 8;
+      const capeFill = opts.bossOutfit === 'sol' ? '#181a20' : opts.capeColor!;
+      const capeRim = opts.inkRimColor ?? inkPalette.rimColor;
+      ctx.save();
+      try {
+        ctx.fillStyle = capeFill;
+        ctx.strokeStyle = '#0b0c10';
+        ctx.lineWidth = 2.8;
+        ctx.lineJoin = 'round';
+        ctx.beginPath();
+        ctx.moveTo(joints.neck.x - 4, joints.neck.y + 2);
+        ctx.quadraticCurveTo(
+          joints.hip.x - 30,
+          joints.hip.y - 6 + wave * 0.5,
+          joints.hip.x - 48,
+          -4 + wave
+        );
+        ctx.lineTo(joints.hip.x - 16, -2 + wave * 0.4);
+        ctx.lineTo(joints.neck.x + 4, joints.neck.y + 8);
+        ctx.closePath();
+        ctx.fill();
+        ctx.stroke();
+
+        // Crisp ink-wash rim highlight along trailing cape edge
+        ctx.strokeStyle = colorWithAlpha(capeRim, 0.72);
+        ctx.lineWidth = 1.6;
+        ctx.beginPath();
+        ctx.moveTo(joints.neck.x - 4, joints.neck.y + 3);
+        ctx.quadraticCurveTo(
+          joints.hip.x - 28,
+          joints.hip.y - 5 + wave * 0.5,
+          joints.hip.x - 45,
+          -5 + wave
+        );
+        ctx.stroke();
+      } finally {
+        ctx.restore();
+      }
+    }
+
+    // 5A. Skin Back Attachments
+    const localVx = (opts.vx ?? 0) * facing;
+    if (!isMono && (opts.characterId || opts.skinId)) {
+      renderSkinBackAttachment(
+        ctx,
+        joints,
+        opts.skinId ?? 'default',
+        isAwakened,
+        safePoseTime,
+        opts.characterId,
+        localVx,
+        opts.vy ?? 0
+      );
+    }
+
+    // 5B. Distinct Awakened Visual Form Back Attachments
+    if (opts.awakenedForm && !isMono) {
+      renderAwakenedBackForm(ctx, joints, opts.awakenedForm, safePoseTime, opts.skinId);
+    }
+
+    const lw = Math.max(1, finiteOr(opts.lineWidth, 9.5));
+    const headR = Math.max(2, finiteOr(opts.headRadius, 12.2));
+    const fillColor = opts.silhouette
+      ? '#07080b'
+      : opts.whiteFlash || isHitFlash
         ? '#ffffff'
-        : opts.bodyColor;
+        : opts.bodyColor || inkPalette.baseFill;
+    const shadowColor = !isMono && !isHitFlash ? inkPalette.shadowFill : undefined;
+    const rimColor = !isMono && !isHitFlash ? (opts.inkRimColor ?? inkPalette.rimColor) : undefined;
 
-  // Ground contact shadow (subtle oval)
-  if (!isMono && opts.pose !== 'float_cast') {
-    ctx.fillStyle = 'rgba(0, 0, 0, 0.32)';
-    ctx.beginPath();
-    ctx.ellipse(0, 2, 24, 5.5, 0, 0, Math.PI * 2);
-    ctx.fill();
-  }
+    // Altitude-aware ground shadow + sleek glossy floor reflection
+    if (!isMono && opts.pose !== 'float_cast') {
+      const heightAboveFloor = Math.max(0, GROUND_Y - safeY);
+      const groundFactor = Math.max(0.18, 1 - heightAboveFloor / 260);
+      const shadowY = heightAboveFloor + 2;
 
-  // Subtle colored rim glow ONLY for protagonist & Fable (matches ref subtle aura)
-  if (!isMono && (opts.darkAura !== 'none' && opts.darkAura !== undefined || opts.bossOutfit === 'fable')) {
-    ctx.save();
-    ctx.globalAlpha = 0.24;
-    strokeSkeletonLimbs(ctx, joints, lw + 8, headR + 4, opts.glowColor);
+      if (heightAboveFloor < 130) {
+        const reflAlpha = (1 - heightAboveFloor / 130) * 0.16;
+        ctx.save();
+        try {
+          ctx.translate(0, shadowY * 2 - 2);
+          ctx.scale(1, -0.58);
+          ctx.globalAlpha = reflAlpha;
+          strokeSkeletonLimbs(ctx, joints, lw + 1, headR, fillColor);
+        } finally {
+          ctx.restore();
+        }
+      }
+
+      ctx.fillStyle = `rgba(0, 0, 0, ${(0.42 * groundFactor).toFixed(3)})`;
+      ctx.beginPath();
+      ctx.ellipse(0, shadowY, 26 * groundFactor, 6 * groundFactor, 0, 0, Math.PI * 2);
+      ctx.fill();
+    }
+
+    // Soft additive rim glow for protagonist, Fable, or rim-lit bosses/elites
+    if (
+      !isMono &&
+      ((opts.darkAura !== 'none' && opts.darkAura !== undefined) ||
+        opts.bossOutfit === 'fable' ||
+        Boolean(opts.inkRimColor))
+    ) {
+      ctx.save();
+      try {
+        ctx.globalCompositeOperation = 'lighter';
+        ctx.globalAlpha = 0.28;
+        strokeSkeletonLimbs(
+          ctx,
+          joints,
+          lw + 8.8,
+          headR + 4.3,
+          opts.inkRimColor ?? opts.glowColor
+        );
+      } finally {
+        ctx.restore();
+      }
+    }
+
+    // Subtle crisp outer ink-wash rim halo behind the sumi outline so dark silhouettes pop on dark arenas
+    if (!isMono && !isHitFlash && rimColor) {
+      strokeSkeletonLimbs(
+        ctx,
+        joints,
+        lw + 6.2,
+        headR + 3.1,
+        colorWithAlpha(rimColor, 0.34)
+      );
+    }
+
+    // BOLD SUMI-E BLACK INK OUTLINE PASS (tapered calligraphic contour)
+    if (!opts.whiteFlash) {
+      strokeSkeletonLimbs(ctx, joints, lw + 4.4, headR + 2.3, inkPalette.inkOutline);
+    }
+
+    // Main Body Back + Torso + Head Fill (with sumi-e shadow wash & directional rim light)
+    strokeSkeletonLimbs(ctx, joints, lw, headR, fillColor, true, false, shadowColor, rimColor);
+
+    // Boss Outfits: Tunic, Mask, Glowing Eyes
+    if (opts.bossOutfit && opts.bossOutfit !== 'none' && !isMono) {
+      renderBossOutfitDetails(
+        ctx,
+        joints,
+        headR,
+        opts.bossOutfit,
+        safePoseTime,
+        opts.entityTier,
+        opts.enragePhase
+      );
+    }
+
+    // Skin Body Armor
+    if (!isMono && (opts.characterId || opts.skinId)) {
+      renderSkinBodyArmor(
+        ctx,
+        joints,
+        opts.skinId ?? 'default',
+        isAwakened,
+        safePoseTime,
+        opts.characterId,
+        localVx,
+        opts.vy
+      );
+    }
+
+    // Playable Fighter Headgear
+    if (opts.headGear && opts.headGear !== 'none' && !isMono) {
+      renderHeroHeadGear(
+        ctx,
+        joints,
+        headR,
+        opts.headGear,
+        safePoseTime,
+        opts.skinId,
+        opts.characterId
+      );
+    }
+
+    // Distinct Awakened Form Head & Aura Crown / Horns / Spikes / Oni Trails
+    if (opts.awakenedForm && !isMono) {
+      renderAwakenedHeadForm(ctx, joints, headR, opts.awakenedForm, safePoseTime, opts.skinId);
+    }
+
+    // Front-layer depth-sorted skin attachments (e.g. 3D orbiting Jade Bamboo Slips / Small Seals)
+    if (!isMono && (opts.characterId || opts.skinId)) {
+      renderSkinFrontAttachment(
+        ctx,
+        joints,
+        opts.skinId ?? 'default',
+        isAwakened,
+        safePoseTime,
+        opts.characterId,
+        localVx,
+        opts.vy ?? 0
+      );
+    }
+
+    // Skin-aware Waist Sheath (covers all Kuro & Kagura skins)
+    if (opts.hasSheath && !isMono) {
+      renderWaistSheath(ctx, joints, opts.characterId, opts.skinId);
+    }
+
+    // Weapon attached to front hand
+    if (opts.weapon && opts.weapon !== 'none' && !opts.silhouette) {
+      renderWeapon(
+        ctx,
+        joints,
+        opts.weapon,
+        safePoseTime,
+        Boolean(opts.whiteFlash),
+        opts.skinId,
+        opts.inkAccent,
+        localVx,
+        opts.vy ?? 0
+      );
+    }
+
+    // Front Leg & Front Arm Fill (with sumi-e shadow wash & directional rim light)
+    strokeSkeletonLimbs(ctx, joints, lw, headR, fillColor, false, true, shadowColor, rimColor);
+
+    // Snug Ink-Wash Scarf Neck Collar
+    if (opts.scarf && opts.scarf.length > 0 && !isMono) {
+      const collarPrimary = opts.scarfPrimary ?? inkPalette.clothPrimary;
+      const collarHighlight = opts.scarfHighlight ?? inkPalette.clothHighlight;
+      ctx.save();
+      try {
+        ctx.translate(joints.neck.x, joints.neck.y + 2);
+        ctx.fillStyle = collarPrimary;
+        ctx.strokeStyle = '#0b0c10';
+        ctx.lineWidth = 2.6;
+        ctx.beginPath();
+        ctx.ellipse(0, 0, 11.5, 5.8, 0.12, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.stroke();
+
+        ctx.strokeStyle = collarHighlight;
+        ctx.lineWidth = 1.5;
+        ctx.lineCap = 'round';
+        ctx.beginPath();
+        ctx.ellipse(0, -1, 8.2, 2.8, 0.12, Math.PI * 1.05, Math.PI * 1.95);
+        ctx.stroke();
+      } finally {
+        ctx.restore();
+      }
+    }
+
+    // Off-hand dagger / void saber for Zero & cyber_ninja (delegated to weapons.ts)
+    if ((opts.weapon === 'twin_daggers' || opts.weapon === 'void_sabers') && !isMono) {
+      renderOffhandDagger(
+        ctx,
+        joints,
+        opts.weapon,
+        opts.skinId,
+        Boolean(opts.whiteFlash),
+        opts.inkAccent
+      );
+    } else if (
+      (opts.weapon === 'mirror_shards' || opts.weapon === 'void_prism_scythe') &&
+      !opts.silhouette
+    ) {
+      renderOffhandMirrorShards(
+        ctx,
+        joints,
+        opts.weapon,
+        safePoseTime,
+        Boolean(opts.whiteFlash),
+        opts.skinId,
+        opts.inkAccent
+      );
+    } else if (
+      (opts.weapon === 'chrono_hand' || opts.weapon === 'chrono_twin_hands') &&
+      !opts.silhouette
+    ) {
+      renderOffhandChronoHand(
+        ctx,
+        joints,
+        opts.weapon,
+        safePoseTime,
+        Boolean(opts.whiteFlash),
+        opts.skinId,
+        opts.inkAccent
+      );
+    } else if ((opts.weapon === 'arcane_hands' || opts.weapon === 'prismatic_hands') && !isMono) {
+      const isRainbow = opts.skinId === 'prismatic_archon' || opts.weapon === 'prismatic_hands';
+      const r = opts.weapon === 'prismatic_hands' ? 16 : 12;
+      ctx.save();
+      try {
+        ctx.globalCompositeOperation = 'lighter';
+        ctx.translate(joints.handL.x, joints.handL.y);
+        ctx.rotate(-safePoseTime * 4.2);
+        ctx.strokeStyle = isRainbow ? '#38bdf8' : '#e879f9';
+        ctx.lineWidth = 2;
+        ctx.beginPath();
+        ctx.arc(0, 0, r, 0, Math.PI * 2);
+        ctx.stroke();
+        ctx.strokeStyle = isRainbow ? '#fde047' : '#38bdf8';
+        ctx.lineWidth = 1.3;
+        ctx.beginPath();
+        for (let i = 0; i < 4; i++) {
+          const a = (i * Math.PI) / 2;
+          ctx.moveTo(Math.cos(a) * r, Math.sin(a) * r);
+          ctx.lineTo(Math.cos(a + Math.PI / 2) * r, Math.sin(a + Math.PI / 2) * r);
+        }
+        ctx.stroke();
+        ctx.fillStyle = '#ffffff';
+        ctx.beginPath();
+        ctx.arc(0, 0, r * 0.34, 0, Math.PI * 2);
+        ctx.fill();
+      } finally {
+        ctx.restore();
+      }
+
+      if (opts.pose === 'parry') {
+        const bx = (joints.handL.x + joints.handR.x) * 0.5 + 10;
+        const by = (joints.handL.y + joints.handR.y) * 0.5;
+        const barrierCol = isRainbow ? '#38bdf8' : '#e879f9';
+        const innerBarrierCol = isRainbow ? '#fde047' : '#38bdf8';
+        ctx.save();
+        try {
+          ctx.globalCompositeOperation = 'lighter';
+          ctx.translate(bx, by);
+          ctx.strokeStyle = barrierCol;
+          ctx.lineWidth = 3.2;
+          ctx.beginPath();
+          ctx.ellipse(0, 0, 15, 32, 0, 0, Math.PI * 2);
+          ctx.stroke();
+          ctx.strokeStyle = innerBarrierCol;
+          ctx.lineWidth = 1.8;
+          ctx.beginPath();
+          for (let i = 0; i < 6; i++) {
+            const a = safePoseTime * 3.2 + (i * Math.PI) / 3;
+            const rx = Math.cos(a) * 11;
+            const ry = Math.sin(a) * 24;
+            if (i === 0) ctx.moveTo(rx, ry);
+            else ctx.lineTo(rx, ry);
+          }
+          ctx.closePath();
+          ctx.stroke();
+          ctx.strokeStyle = '#ffffff';
+          ctx.lineWidth = 1.6;
+          ctx.beginPath();
+          ctx.ellipse(2, 0, 11, 24, 0, -Math.PI * 0.45, Math.PI * 0.45);
+          ctx.stroke();
+        } finally {
+          ctx.restore();
+        }
+      }
+    }
+
+    // Ink-Washed Round Shield on front/left hand for Boss 1 Haiku & Aegis Guard
+    if (opts.weapon === 'shield_sword' && !isMono) {
+      ctx.save();
+      try {
+        ctx.translate(joints.handL.x + 6, joints.handL.y);
+        ctx.fillStyle = '#d6c38d';
+        ctx.strokeStyle = '#0b0c10';
+        ctx.lineWidth = 3.2;
+        ctx.beginPath();
+        ctx.ellipse(0, 0, 14, 21, 0, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.stroke();
+
+        // Dark sumi-e shield shadow crescent
+        ctx.fillStyle = '#927948';
+        ctx.beginPath();
+        ctx.ellipse(-2, 1, 9, 17, 0, Math.PI * 0.5, Math.PI * 1.5);
+        ctx.closePath();
+        ctx.fill();
+
+        // Shield boss & rim highlight
+        ctx.fillStyle = '#fef3c7';
+        ctx.strokeStyle = '#0b0c10';
+        ctx.lineWidth = 2;
+        ctx.beginPath();
+        ctx.arc(0, 0, 5, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.stroke();
+
+        ctx.strokeStyle = '#ffffff';
+        ctx.lineWidth = 1.4;
+        ctx.lineCap = 'round';
+        ctx.beginPath();
+        ctx.ellipse(0, 0, 11.5, 18.5, 0, -Math.PI * 0.42, Math.PI * 0.28);
+        ctx.stroke();
+      } finally {
+        ctx.restore();
+      }
+    }
+  } finally {
     ctx.restore();
   }
+  return joints;
+}
 
-  // BOLD CEL-SHADED BLACK INK OUTLINE PASS (The signature Alan Becker / Hyuns Dojo look!)
-  if (!opts.whiteFlash) {
-    strokeSkeletonLimbs(ctx, joints, lw + 4.4, headR + 2.3, '#0b0c10');
+function renderWaistSheath(
+  ctx: CanvasRenderingContext2D,
+  joints: SkeletonJoints,
+  characterId?: CharacterId,
+  skinId?: SkinId
+): void {
+  let bodyCol = '#1f232c';
+  let wrapCol = '#ef4444';
+  let fittingCol = '#facc15';
+  let rimCol = '#94a3b8';
+
+  if (skinId === 'radiant_seraph') {
+    bodyCol = '#f8fafc';
+    wrapCol = '#f59e0b';
+    fittingCol = '#facc15';
+    rimCol = '#ffffff';
+  } else if (skinId === 'void_walker') {
+    bodyCol = '#1e1b4b';
+    wrapCol = '#a855f7';
+    fittingCol = '#e879f9';
+    rimCol = '#d8b4fe';
+  } else if (skinId === 'eclipse_ronin') {
+    bodyCol = '#09090b';
+    wrapCol = '#f97316';
+    fittingCol = '#fde047';
+    rimCol = '#fb923c';
+  } else if (skinId === 'solar_phoenix') {
+    bodyCol = '#7f1d1d';
+    wrapCol = '#fde047';
+    fittingCol = '#fef9c3';
+    rimCol = '#fbbf24';
+  } else if (skinId === 'frost_empress') {
+    bodyCol = '#0c4a6e';
+    wrapCol = '#38bdf8';
+    fittingCol = '#c084fc';
+    rimCol = '#e0f2fe';
+  } else if (characterId === 'kagura') {
+    bodyCol = '#1c1917';
+    wrapCol = '#f97316';
+    fittingCol = '#fbbf24';
+    rimCol = '#fed7aa';
   }
 
-  // Main Body Back + Torso + Head Fill
-  strokeSkeletonLimbs(ctx, joints, lw, headR, fillColor, true, false);
-
-  // Boss Outfits: Tunic, Mask, Glowing Eyes (ref 00:28–00:45!)
-  if (opts.bossOutfit && opts.bossOutfit !== 'none' && !isMono) {
-    renderBossOutfitDetails(ctx, joints, headR, opts.bossOutfit);
-  }
-
-  // Playable Fighter Headgear (Volt Visor / Flame Band / Phantom Eyes)
-  if (opts.headGear && opts.headGear !== 'none' && !isMono) {
-    renderHeroHeadGear(ctx, joints, headR, opts.headGear, opts.poseTime);
-  }
-
-  // Distinct Awakened Form Head & Aura Crown / Horns / Spikes / Oni Trails!
-  if (opts.awakenedForm && !isMono) {
-    renderAwakenedHeadForm(ctx, joints, headR, opts.awakenedForm, opts.poseTime);
-  }
-
-  // Waist Sheath (Red-black lacquer with gold guard & rings)
-  if (opts.hasSheath && !isMono) {
-    ctx.save();
+  ctx.save();
+  try {
     ctx.translate(joints.hip.x - 4, joints.hip.y + 2);
     ctx.rotate(0.28);
+    ctx.lineCap = 'round';
+
+    // Outer sumi-ink contour
     ctx.strokeStyle = '#0b0c10';
-    ctx.lineWidth = 9;
+    ctx.lineWidth = 9.2;
     ctx.beginPath();
-    ctx.moveTo(-42, 0);
+    ctx.moveTo(-43, 0);
     ctx.lineTo(14, 0);
     ctx.stroke();
 
-    ctx.strokeStyle = '#1f232c';
-    ctx.lineWidth = 5.5;
+    // Scabbard body
+    ctx.strokeStyle = bodyCol;
+    ctx.lineWidth = 5.4;
     ctx.stroke();
 
-    ctx.strokeStyle = '#ef4444';
+    // Top specular rim highlight
+    ctx.strokeStyle = colorWithAlpha(rimCol, 0.72);
+    ctx.lineWidth = 1.3;
+    ctx.beginPath();
+    ctx.moveTo(-40, -1.8);
+    ctx.lineTo(9, -1.8);
+    ctx.stroke();
+
+    // Sageo cord bands
+    ctx.strokeStyle = wrapCol;
     ctx.lineWidth = 2.6;
     ctx.beginPath();
     ctx.moveTo(-40, 0);
@@ -1000,76 +1762,18 @@ export function renderStickman(
     ctx.lineTo(6, 0);
     ctx.stroke();
 
-    ctx.strokeStyle = '#facc15';
+    // Kojiri & Koiguchi metallic fittings
+    ctx.strokeStyle = fittingCol;
     ctx.lineWidth = 3.5;
     ctx.beginPath();
-    ctx.moveTo(10, -3);
-    ctx.lineTo(13, 3);
+    ctx.moveTo(-43, -2);
+    ctx.lineTo(-43, 2);
+    ctx.moveTo(10, -3.2);
+    ctx.lineTo(13, 3.2);
     ctx.stroke();
+  } finally {
     ctx.restore();
   }
-
-  // Weapon attached to front hand
-  if (opts.weapon && opts.weapon !== 'none' && !opts.silhouette) {
-    renderWeapon(ctx, joints, opts.weapon, opts.poseTime, Boolean(opts.whiteFlash));
-  }
-
-  // Front Leg & Front Arm Fill
-  strokeSkeletonLimbs(ctx, joints, lw, headR, fillColor, false, true);
-
-  // Snug Cel-Shaded Scarf Neck Collar on top of neck (ref 00:00–00:46!)
-  if (opts.scarf && opts.scarf.length > 0 && !isMono) {
-    ctx.save();
-    ctx.translate(joints.neck.x, joints.neck.y + 2);
-    ctx.fillStyle = opts.scarfPrimary ?? '#3b82f6';
-    ctx.strokeStyle = '#0b0c10';
-    ctx.lineWidth = 2.6;
-    ctx.beginPath();
-    ctx.ellipse(0, 0, 11, 5.5, 0.12, 0, Math.PI * 2);
-    ctx.fill();
-    ctx.stroke();
-    ctx.restore();
-  }
-
-  // Off-hand dagger / void saber for Zero (twin blades!)
-  if ((opts.weapon === 'twin_daggers' || opts.weapon === 'void_sabers') && !isMono) {
-    ctx.save();
-    ctx.translate(joints.handL.x, joints.handL.y);
-    ctx.rotate(joints.weaponAngle + 0.55);
-    const len = opts.weapon === 'void_sabers' ? 54 : 34;
-    ctx.strokeStyle = '#0b0c10';
-    ctx.lineWidth = 7;
-    ctx.beginPath();
-    ctx.moveTo(-6, 0);
-    ctx.lineTo(len, 0);
-    ctx.stroke();
-    ctx.strokeStyle = opts.weapon === 'void_sabers' ? '#34d399' : '#a7f3d0';
-    ctx.lineWidth = 3.4;
-    ctx.stroke();
-    ctx.restore();
-  }
-
-  // Round Golden-Tan Shield on front/left hand for Boss 1 Haiku (ref 00:28–00:36!)
-  if (opts.weapon === 'shield_sword' && !isMono) {
-    ctx.save();
-    ctx.translate(joints.handL.x + 6, joints.handL.y);
-    ctx.fillStyle = '#d6c38d';
-    ctx.strokeStyle = '#0b0c10';
-    ctx.lineWidth = 3.2;
-    ctx.beginPath();
-    ctx.ellipse(0, 0, 14, 21, 0, 0, Math.PI * 2);
-    ctx.fill();
-    ctx.stroke();
-    ctx.fillStyle = '#fef3c7';
-    ctx.beginPath();
-    ctx.arc(0, 0, 5, 0, Math.PI * 2);
-    ctx.fill();
-    ctx.stroke();
-    ctx.restore();
-  }
-
-  ctx.restore();
-  return joints;
 }
 
 function renderDarkInkAura(
@@ -1077,50 +1781,508 @@ function renderDarkInkAura(
   x: number,
   y: number,
   time: number,
-  mode: 'purple' | 'crimson' | 'cyan' | 'gold' | 'ember' | 'emerald'
+  mode: 'purple' | 'crimson' | 'cyan' | 'gold' | 'ember' | 'emerald',
+  skinId?: SkinId,
+  auraRimColor?: string,
+  auraPuddleColor?: string,
+  characterId?: CharacterId,
+  entityTier?: 'hero' | 'mob' | 'elite' | 'boss',
+  enragePhase?: 1 | 2
 ): void {
   ctx.save();
-  ctx.translate(x, y + 2);
-  const rimMap: Record<typeof mode, [string, string]> = {
-    purple: ['#7c3aed', 'rgba(124, 58, 237, 0.32)'],
-    crimson: ['#dc2626', 'rgba(220, 38, 38, 0.34)'],
-    cyan: ['#06b6d4', 'rgba(6, 182, 212, 0.34)'],
-    gold: ['#eab308', 'rgba(234, 179, 8, 0.36)'],
-    ember: ['#f97316', 'rgba(249, 115, 22, 0.35)'],
-    emerald: ['#10b981', 'rgba(16, 185, 129, 0.34)'],
-  };
-  const [rimColor, puddleColor] = rimMap[mode];
+  try {
+    ctx.translate(x, y + 2);
+    const rimMap: Record<typeof mode, [string, string]> = {
+      purple: ['#7c3aed', 'rgba(124, 58, 237, 0.32)'],
+      crimson: ['#dc2626', 'rgba(220, 38, 38, 0.34)'],
+      cyan: ['#06b6d4', 'rgba(6, 182, 212, 0.34)'],
+      gold: ['#eab308', 'rgba(234, 179, 8, 0.36)'],
+      ember: ['#f97316', 'rgba(249, 115, 22, 0.35)'],
+      emerald: ['#10b981', 'rgba(16, 185, 129, 0.34)'],
+    };
+    const skinMap: Partial<Record<SkinId, { rim: string; puddle: string; core: string }>> = {
+      radiant_seraph: { rim: '#eab308', puddle: 'rgba(250, 204, 21, 0.36)', core: '#fef9c3' },
+      void_walker: { rim: '#a855f7', puddle: 'rgba(147, 51, 234, 0.36)', core: '#090418' },
+      eclipse_ronin: { rim: '#f97316', puddle: 'rgba(220, 38, 38, 0.38)', core: '#090404' },
+      storm_shogun: { rim: '#3b82f6', puddle: 'rgba(37, 99, 235, 0.36)', core: '#0f172a' },
+      cyber_valkyrie: { rim: '#e879f9', puddle: 'rgba(217, 70, 239, 0.35)', core: '#090418' },
+      solar_phoenix: { rim: '#fbbf24', puddle: 'rgba(239, 68, 68, 0.36)', core: '#1c0602' },
+      frost_empress: { rim: '#22d3ee', puddle: 'rgba(14, 165, 233, 0.36)', core: '#0c4a6e' },
+      blood_moon: { rim: '#f43f5e', puddle: 'rgba(225, 29, 72, 0.36)', core: '#1f060c' },
+      astral_phantom: { rim: '#6366f1', puddle: 'rgba(79, 70, 229, 0.36)', core: '#1e1b4b' },
+      prismatic_archon: { rim: '#38bdf8', puddle: 'rgba(236, 72, 153, 0.38)', core: '#1e1b4b' },
+      celestial_empress: { rim: '#38bdf8', puddle: 'rgba(56, 189, 248, 0.38)', core: '#060a18' },
+      abyssal_valkyrie: { rim: '#f43f5e', puddle: 'rgba(190, 18, 60, 0.40)', core: '#0d040b' },
+      void_shatterer: { rim: '#f43f5e', puddle: 'rgba(244, 63, 94, 0.38)', core: '#09090b' },
+      chrono_sovereign: { rim: '#f59e0b', puddle: 'rgba(245, 158, 11, 0.38)', core: '#120b03' },
+      xuan_feng_sage: { rim: '#5eead4', puddle: 'rgba(94, 234, 212, 0.30)', core: '#0f172a' },
+    };
+    const defaultCharMap: Partial<
+      Record<CharacterId, { rim: string; puddle: string; core: string }>
+    > = {
+      aether: { rim: '#e879f9', puddle: 'rgba(192, 38, 211, 0.36)', core: '#130524' },
+      valkyrie: { rim: '#facc15', puddle: 'rgba(250, 204, 21, 0.36)', core: '#1c1404' },
+      mirage: { rim: '#c084fc', puddle: 'rgba(192, 132, 252, 0.34)', core: '#130f2e' },
+      chrono: { rim: '#2dd4bf', puddle: 'rgba(45, 212, 191, 0.34)', core: '#041f1e' },
+    };
 
-  // Soft outer rim puddle
-  ctx.fillStyle = puddleColor;
-  ctx.beginPath();
-  ctx.ellipse(0, 0, 48, 12, 0, 0, Math.PI * 2);
-  ctx.fill();
+    const safeTime = finiteOr(time, 0);
+    const skinCfg =
+      skinId && skinId !== 'default'
+        ? skinMap[skinId]
+        : characterId
+          ? defaultCharMap[characterId]
+          : undefined;
+    const [fallbackRim, fallbackPuddle] = rimMap[mode];
+    const rimColor = auraRimColor ?? skinCfg?.rim ?? fallbackRim;
+    const puddleColor = auraPuddleColor ?? skinCfg?.puddle ?? fallbackPuddle;
+    const coreColor = skinCfg?.core ?? '#0b0c10';
+    const isEnraged = enragePhase === 2;
+    const scaleRadius = isEnraged ? 1.16 : 1;
 
-  // Dark ink puddle core
-  ctx.fillStyle = '#0d0b12';
-  ctx.beginPath();
-  ctx.ellipse(0, 0, 40, 8.5, 0, 0, Math.PI * 2);
-  ctx.fill();
-
-  // 7 writhing ink-flame tendrils rising around feet (ref 00:01–00:46!)
-  for (let i = -3; i <= 3; i++) {
-    const bx = i * 11;
-    const h = 18 + Math.sin(time * 7.5 + i * 1.4) * 9 + (3 - Math.abs(i)) * 4;
-    const sway = Math.cos(time * 6 + i * 1.9) * 8;
-    ctx.strokeStyle = rimColor;
-    ctx.lineWidth = 5;
-    ctx.lineCap = 'round';
+    // Soft outer rim puddle
+    ctx.fillStyle = puddleColor;
     ctx.beginPath();
-    ctx.moveTo(bx, 0);
-    ctx.quadraticCurveTo(bx + sway, -h * 0.55, bx + sway * 1.35, -h);
+    ctx.ellipse(0, 0, 48 * scaleRadius, 12 * scaleRadius, 0, 0, Math.PI * 2);
+    ctx.fill();
+
+    // Sumi-e ink splatter ring + droplets around the base puddle
+    ctx.strokeStyle = colorWithAlpha('#0b0c10', 0.85);
+    ctx.lineWidth = isEnraged ? 3 : 2.2;
+    ctx.beginPath();
+    ctx.ellipse(0, 0, 44 * scaleRadius, 10.5 * scaleRadius, 0, 0, Math.PI * 2);
     ctx.stroke();
 
-    ctx.strokeStyle = '#0a090e';
-    ctx.lineWidth = 3;
-    ctx.stroke();
+    // Core ink pool
+    ctx.fillStyle = coreColor;
+    ctx.beginPath();
+    ctx.ellipse(0, 0, 40 * scaleRadius, 8.5 * scaleRadius, 0, 0, Math.PI * 2);
+    ctx.fill();
+
+    // Elite / Enraged Boss ring accent
+    if (entityTier === 'elite' || isEnraged) {
+      ctx.strokeStyle = colorWithAlpha(rimColor, 0.78);
+      ctx.lineWidth = 1.8;
+      ctx.beginPath();
+      ctx.ellipse(0, 0, 52 * scaleRadius, 13 * scaleRadius, 0, 0, Math.PI * 2);
+      ctx.stroke();
+    }
+
+    // Orbiting sumi-e ink droplets
+    ctx.fillStyle = '#0b0c10';
+    for (let d = 0; d < 4; d++) {
+      const a = safeTime * 2.4 + d * (Math.PI * 0.5);
+      const dx = Math.cos(a) * 48 * scaleRadius;
+      const dy = Math.sin(a) * 10 * scaleRadius - Math.abs(Math.sin(safeTime * 4 + d)) * 4;
+      ctx.beginPath();
+      ctx.arc(dx, dy, 2.2, 0, Math.PI * 2);
+      ctx.fill();
+    }
+
+    if (
+      skinId === 'chrono_sovereign' ||
+      (characterId === 'chrono' && (!skinId || skinId === 'default'))
+    ) {
+      // Chrono / Thần Thời Gian: Crisp ink-wash Roman clock dial + rotating gear ticks ground aura
+      const isSov = skinId === 'chrono_sovereign';
+      const dialPrimary = isSov ? '#f59e0b' : '#2dd4bf';
+      const dialSecondary = isSov ? '#38bdf8' : '#fef08a';
+      const rx = 44 * scaleRadius;
+      const ry = 10.5 * scaleRadius;
+
+      // Outer gilded/teal bezel ellipse
+      ctx.strokeStyle = dialPrimary;
+      ctx.lineWidth = isSov ? 2.2 : 1.7;
+      ctx.beginPath();
+      ctx.ellipse(0, 0, rx, ry, 0, 0, Math.PI * 2);
+      ctx.stroke();
+
+      // Inner counter-rotating gear tick ring in perspective
+      ctx.strokeStyle = dialSecondary;
+      ctx.lineWidth = 1.4;
+      ctx.beginPath();
+      for (let k = 0; k < 12; k++) {
+        const ang = (k * Math.PI * 2) / 12 + safeTime * (isSov ? 0.9 : 0.55);
+        const rIn = k % 3 === 0 ? 0.62 : 0.78;
+        ctx.moveTo(Math.cos(ang) * rx * rIn, Math.sin(ang) * ry * rIn);
+        ctx.lineTo(Math.cos(ang) * rx * 0.96, Math.sin(ang) * ry * 0.96);
+      }
+      ctx.stroke();
+
+      // Sweeping perspective clock hands across the dial
+      const minA = safeTime * 2.6;
+      const hrA = -safeTime * 0.7;
+      ctx.strokeStyle = isSov ? '#fef08a' : '#99f6e4';
+      ctx.lineWidth = 1.8;
+      ctx.lineCap = 'round';
+      ctx.beginPath();
+      ctx.moveTo(0, 0);
+      ctx.lineTo(Math.cos(minA) * rx * 0.78, Math.sin(minA) * ry * 0.78);
+      ctx.moveTo(0, 0);
+      ctx.lineTo(Math.cos(hrA) * rx * 0.52, Math.sin(hrA) * ry * 0.52);
+      ctx.stroke();
+
+      // Ascending time-dust / clock sparks
+      for (let s = -2; s <= 2; s++) {
+        const sx = s * 14 + Math.sin(safeTime * 4.2 + s * 1.3) * 4;
+        const sy = -8 - Math.abs(Math.cos(safeTime * 5.0 + s * 1.9)) * (isSov ? 16 : 11);
+        ctx.fillStyle = s % 2 === 0 ? dialPrimary : dialSecondary;
+        ctx.strokeStyle = '#081214';
+        ctx.lineWidth = 1.1;
+        ctx.beginPath();
+        ctx.moveTo(sx, sy - 3.6);
+        ctx.lineTo(sx + 2.4, sy);
+        ctx.lineTo(sx, sy + 3.6);
+        ctx.lineTo(sx - 2.4, sy);
+        ctx.closePath();
+        ctx.fill();
+        ctx.stroke();
+      }
+    } else if (
+      skinId === 'void_shatterer' ||
+      (characterId === 'mirage' && (!skinId || skinId === 'default'))
+    ) {
+      // Mirage / Ma Kính: Shattered obsidian crystal puddle + angular fracture lines + prismatic shard tendrils
+      const isVoid = skinId === 'void_shatterer';
+      const shardPrimary = isVoid ? '#f43f5e' : '#c084fc';
+      const shardSecondary = isVoid ? '#38bdf8' : '#f1f5f9';
+      const shardCore = isVoid ? '#18181b' : '#1e1b4b';
+      const shardOutline = isVoid ? '#07040a' : '#0b0c10';
+
+      // Angular shattered mirror web across the ground puddle
+      ctx.strokeStyle = shardSecondary;
+      ctx.lineWidth = 1.4;
+      ctx.beginPath();
+      for (let k = 0; k < 6; k++) {
+        const ang = (k * Math.PI) / 3 + 0.2;
+        ctx.moveTo(Math.cos(ang) * 10, Math.sin(ang) * 2.5);
+        ctx.lineTo(Math.cos(ang) * 44 * scaleRadius, Math.sin(ang) * 10.5 * scaleRadius);
+      }
+      ctx.stroke();
+
+      // 7 sharp faceted crystal shard tendrils rising around feet
+      for (let i = -3; i <= 3; i++) {
+        const bx = i * 11.5;
+        const h =
+          (isVoid ? 21 : 17) +
+          Math.sin(safeTime * 6.4 + i * 1.55) * 6 +
+          (3 - Math.abs(i)) * 4.5;
+        const tilt = i * 2.2 + Math.cos(safeTime * 4.2 + i) * 2.5;
+        ctx.fillStyle = shardCore;
+        ctx.strokeStyle = shardOutline;
+        ctx.lineWidth = 1.6;
+        ctx.lineJoin = 'round';
+        ctx.beginPath();
+        ctx.moveTo(bx - 4.2, 1);
+        ctx.lineTo(bx + tilt, -h);
+        ctx.lineTo(bx + 4.2, 1);
+        ctx.closePath();
+        ctx.fill();
+        ctx.stroke();
+
+        // Lit prism facet half
+        ctx.fillStyle = i % 2 === 0 ? shardPrimary : shardSecondary;
+        ctx.beginPath();
+        ctx.moveTo(bx, 0.5);
+        ctx.lineTo(bx + tilt, -h + 1);
+        ctx.lineTo(bx + 3.5, 0.5);
+        ctx.closePath();
+        ctx.fill();
+      }
+
+      // Orbiting floating mirror splinters for Ma Kính (void_shatterer)
+      if (isVoid) {
+        for (let s = 0; s < 3; s++) {
+          const sa = safeTime * 3.1 + (s * Math.PI * 2) / 3;
+          const sx = Math.cos(sa) * 36;
+          const sy = -10 - Math.abs(Math.sin(safeTime * 4.8 + s * 1.7)) * 12;
+          ctx.fillStyle = s % 2 === 0 ? '#38bdf8' : '#f43f5e';
+          ctx.strokeStyle = '#07040a';
+          ctx.lineWidth = 1.3;
+          ctx.beginPath();
+          ctx.moveTo(sx, sy - 4.5);
+          ctx.lineTo(sx + 2.6, sy);
+          ctx.lineTo(sx, sy + 4.5);
+          ctx.lineTo(sx - 2.6, sy);
+          ctx.closePath();
+          ctx.fill();
+          ctx.stroke();
+        }
+      }
+    } else if (skinId === 'xuan_feng_sage') {
+      // Xuân Phong Văn Thánh: Trận đồ Thư Pháp – Viên Tương – Hoa Đào dưới chân (tương đương mật độ Chrono Sovereign)
+      const rx = 46 * scaleRadius;
+      const ry = 11.2 * scaleRadius;
+
+      // 1. Outer pale-gold & jade-teal elliptical scripture ring
+      ctx.strokeStyle = colorWithAlpha('#fde68a', 0.72);
+      ctx.lineWidth = 1.3;
+      ctx.beginPath();
+      ctx.ellipse(0, 0, rx + 3, ry + 0.8, 0, 0, Math.PI * 2);
+      ctx.stroke();
+
+      ctx.strokeStyle = '#5eead4';
+      ctx.lineWidth = 2.0;
+      ctx.beginPath();
+      ctx.ellipse(0, 0, rx, ry, 0, 0, Math.PI * 2);
+      ctx.stroke();
+
+      // 2. Perspective open Zen Enso brush stroke rotating slowly across floor pool
+      const ensoRot = safeTime * 0.65;
+      ctx.strokeStyle = '#f8fafc';
+      ctx.lineWidth = 2.3;
+      ctx.lineCap = 'round';
+      ctx.beginPath();
+      ctx.ellipse(0, 0, rx * 0.76, ry * 0.76, 0, ensoRot + 0.25, ensoRot + Math.PI * 1.72);
+      ctx.stroke();
+
+      ctx.strokeStyle = '#2dd4bf';
+      ctx.lineWidth = 1.25;
+      ctx.beginPath();
+      ctx.ellipse(0, 0, rx * 0.66, ry * 0.66, 0, ensoRot + 0.45, ensoRot + Math.PI * 1.52);
+      ctx.stroke();
+
+      // 3. 12 counter-rotating Confucian / calligraphy tick marks along perspective ring
+      for (let k = 0; k < 12; k++) {
+        const ang = (k * Math.PI * 2) / 12 - safeTime * 0.55;
+        const isCardinal = k % 3 === 0;
+        const rIn = isCardinal ? 0.64 : 0.82;
+        ctx.strokeStyle = isCardinal ? '#fde68a' : '#5eead4';
+        ctx.lineWidth = isCardinal ? 1.7 : 1.15;
+        ctx.beginPath();
+        ctx.moveTo(Math.cos(ang) * rx * rIn, Math.sin(ang) * ry * rIn);
+        ctx.lineTo(Math.cos(ang) * rx * 0.98, Math.sin(ang) * ry * 0.98);
+        ctx.stroke();
+      }
+
+      // 4. 5 ascending peach blossom petals & jade-gold calligraphy sparks rising around feet
+      for (let s = -2; s <= 2; s++) {
+        const sx = s * 15 + Math.sin(safeTime * 3.4 + s * 1.4) * 5;
+        const sy = -7 - Math.abs(Math.cos(safeTime * 4.0 + s * 1.8)) * 15;
+        if (s % 2 === 0) {
+          // Ascending peach blossom petal
+          ctx.save();
+          try {
+            ctx.translate(sx, sy);
+            ctx.rotate(safeTime * 1.5 + s);
+            ctx.fillStyle = s === 0 ? '#fbcfe8' : '#fda4af';
+            ctx.strokeStyle = '#1e293b';
+            ctx.lineWidth = 0.95;
+            ctx.beginPath();
+            ctx.moveTo(0, -3.2);
+            ctx.quadraticCurveTo(3.2, -0.8, 1.5, 2.8);
+            ctx.quadraticCurveTo(0, 3.4, -1.5, 2.8);
+            ctx.quadraticCurveTo(-3.2, -0.8, 0, -3.2);
+            ctx.closePath();
+            ctx.fill();
+            ctx.stroke();
+          } finally {
+            ctx.restore();
+          }
+        } else {
+          // Jade-teal & pale-gold calligraphy spark diamond
+          ctx.fillStyle = s > 0 ? '#5eead4' : '#fde68a';
+          ctx.strokeStyle = '#0f172a';
+          ctx.lineWidth = 1.0;
+          ctx.beginPath();
+          ctx.moveTo(sx, sy - 3.4);
+          ctx.lineTo(sx + 2.2, sy);
+          ctx.lineTo(sx, sy + 3.4);
+          ctx.lineTo(sx - 2.2, sy);
+          ctx.closePath();
+          ctx.fill();
+          ctx.stroke();
+        }
+      }
+    } else if (skinId === 'radiant_seraph' || (characterId === 'valkyrie' && (!skinId || skinId === 'default'))) {
+      // Luminous golden rays rising from holy light pool
+      ctx.strokeStyle = rimColor;
+      ctx.lineWidth = 3.2;
+      ctx.lineCap = 'round';
+      for (let i = -3; i <= 3; i++) {
+        const bx = i * 11;
+        const h = 18 + Math.sin(time * 7.5 + i * 1.4) * 8 + (3 - Math.abs(i)) * 4;
+        ctx.beginPath();
+        ctx.moveTo(bx, 0);
+        ctx.lineTo(bx * 1.15, -h);
+        ctx.stroke();
+      }
+    } else if (skinId === 'frost_empress') {
+      // Glacial cyan-violet crystal spikes rising around feet
+      for (let i = -3; i <= 3; i++) {
+        const bx = i * 11;
+        const h = 17 + Math.sin(time * 5 + i * 1.6) * 5 + (3 - Math.abs(i)) * 4;
+        ctx.fillStyle = i % 2 === 0 ? '#38bdf8' : '#c084fc';
+        ctx.strokeStyle = '#e0f2fe';
+        ctx.lineWidth = 1.4;
+        ctx.beginPath();
+        ctx.moveTo(bx - 4, 1);
+        ctx.lineTo(bx, -h);
+        ctx.lineTo(bx + 4, 1);
+        ctx.closePath();
+        ctx.fill();
+        ctx.stroke();
+      }
+    } else if (skinId === 'cyber_valkyrie') {
+      // Stepped neon-magenta & cyan digital energy bars
+      for (let i = -3; i <= 3; i++) {
+        const bx = i * 11;
+        const h = 15 + Math.abs(Math.sin(time * 10 + i * 1.8)) * 14;
+        ctx.fillStyle = i % 2 === 0 ? '#e879f9' : '#22d3ee';
+        ctx.fillRect(bx - 2.2, -h, 4.4, h);
+      }
+    } else if (skinId === 'eclipse_ronin') {
+      // Solar-eclipse obsidian ring + blazing crimson-gold ink flame tongues
+      ctx.strokeStyle = '#fde047';
+      ctx.lineWidth = 2;
+      ctx.beginPath();
+      ctx.arc(0, -4, 32, Math.PI * 0.12, Math.PI * 0.88);
+      ctx.stroke();
+      for (let i = -3; i <= 3; i++) {
+        const bx = i * 11;
+        const h = 19 + Math.sin(time * 8 + i * 1.5) * 9 + (3 - Math.abs(i)) * 4.5;
+        const sway = Math.cos(time * 6.5 + i * 1.8) * 8;
+        ctx.strokeStyle = i % 2 === 0 ? '#f97316' : '#dc2626';
+        ctx.lineWidth = 5.2;
+        ctx.lineCap = 'round';
+        ctx.beginPath();
+        ctx.moveTo(bx, 0);
+        ctx.quadraticCurveTo(bx + sway, -h * 0.55, bx + sway * 1.3, -h);
+        ctx.stroke();
+        ctx.strokeStyle = '#09090b';
+        ctx.lineWidth = 2.4;
+        ctx.stroke();
+      }
+    } else if (
+      skinId === 'prismatic_archon' ||
+      (characterId === 'aether' && (!skinId || skinId === 'default'))
+    ) {
+      // Arcane / Prismatic floating sigil motes & ascending wisps
+      const isPrism = skinId === 'prismatic_archon';
+      const prismCols = ['#f43f5e', '#fde047', '#34d399', '#38bdf8', '#c084fc'];
+      for (let i = -3; i <= 3; i++) {
+        const bx = i * 11;
+        const h = 17 + Math.sin(time * 6.8 + i * 1.5) * 8 + (3 - Math.abs(i)) * 3.5;
+        const sway = Math.cos(time * 5.2 + i * 1.7) * 7;
+        ctx.strokeStyle = isPrism ? prismCols[(i + 3) % prismCols.length] : rimColor;
+        ctx.lineWidth = 4;
+        ctx.lineCap = 'round';
+        ctx.beginPath();
+        ctx.moveTo(bx, 0);
+        ctx.quadraticCurveTo(bx + sway, -h * 0.55, bx + sway * 1.25, -h);
+        ctx.stroke();
+      }
+      ctx.fillStyle = isPrism ? '#fde047' : '#38bdf8';
+      for (let s = -1; s <= 1; s++) {
+        const sx = s * 18 + Math.sin(time * 4.5 + s) * 4;
+        const sy = -12 - Math.abs(Math.cos(time * 5.2 + s * 2)) * 12;
+        ctx.beginPath();
+        ctx.arc(sx, sy, 2.4, 0, Math.PI * 2);
+        ctx.fill();
+      }
+    } else if (skinId === 'celestial_empress') {
+      // Starlight sapphire & gold plumes
+      for (let i = -3; i <= 3; i++) {
+        const bx = i * 11;
+        const h = 18 + Math.sin(time * 6.5 + i * 1.4) * 8 + (3 - Math.abs(i)) * 4;
+        ctx.strokeStyle = i % 2 === 0 ? '#38bdf8' : '#fde047';
+        ctx.lineWidth = 3.4;
+        ctx.lineCap = 'round';
+        ctx.beginPath();
+        ctx.moveTo(bx, 0);
+        ctx.quadraticCurveTo(bx * 1.1, -h * 0.5, bx * 1.2, -h);
+        ctx.stroke();
+      }
+    } else if (skinId === 'abyssal_valkyrie') {
+      // Eclipse crimson-violet dark feathers rising
+      for (let i = -3; i <= 3; i++) {
+        const bx = i * 11;
+        const h = 19 + Math.sin(time * 7.8 + i * 1.5) * 9 + (3 - Math.abs(i)) * 4;
+        const sway = Math.cos(time * 6.2 + i * 1.8) * 8;
+        ctx.strokeStyle = i % 2 === 0 ? '#f43f5e' : '#a855f7';
+        ctx.lineWidth = 4.8;
+        ctx.lineCap = 'round';
+        ctx.beginPath();
+        ctx.moveTo(bx, 0);
+        ctx.quadraticCurveTo(bx + sway, -h * 0.55, bx + sway * 1.3, -h);
+        ctx.stroke();
+        ctx.strokeStyle = '#09040b';
+        ctx.lineWidth = 2.2;
+        ctx.stroke();
+      }
+    } else if (skinId === 'astral_phantom') {
+      // Indigo nebula wisps + 3 twinkling star points
+      for (let i = -3; i <= 3; i++) {
+        const bx = i * 11;
+        const h = 17 + Math.sin(time * 6.5 + i * 1.4) * 8 + (3 - Math.abs(i)) * 3.5;
+        const sway = Math.cos(time * 5 + i * 1.9) * 7;
+        ctx.strokeStyle = rimColor;
+        ctx.lineWidth = 4.2;
+        ctx.lineCap = 'round';
+        ctx.beginPath();
+        ctx.moveTo(bx, 0);
+        ctx.quadraticCurveTo(bx + sway, -h * 0.55, bx + sway * 1.3, -h);
+        ctx.stroke();
+      }
+      ctx.fillStyle = '#fde047';
+      for (let s = -1; s <= 1; s++) {
+        const sx = s * 16 + Math.sin(time * 4 + s) * 4;
+        const sy = -10 - Math.abs(Math.cos(time * 5 + s * 2)) * 12;
+        ctx.beginPath();
+        ctx.arc(sx, sy, 2.2, 0, Math.PI * 2);
+        ctx.fill();
+      }
+    } else if (skinId === 'blood_moon') {
+      // Crimson crescent arc rim + scarlet wisps
+      ctx.strokeStyle = '#fda4af';
+      ctx.lineWidth = 1.8;
+      ctx.beginPath();
+      ctx.arc(0, 0, 34, 0.15, Math.PI - 0.15);
+      ctx.stroke();
+      for (let i = -3; i <= 3; i++) {
+        const bx = i * 11;
+        const h = 18 + Math.sin(time * 7.5 + i * 1.4) * 9 + (3 - Math.abs(i)) * 4;
+        const sway = Math.cos(time * 6 + i * 1.9) * 8;
+        ctx.strokeStyle = rimColor;
+        ctx.lineWidth = 5;
+        ctx.lineCap = 'round';
+        ctx.beginPath();
+        ctx.moveTo(bx, 0);
+        ctx.quadraticCurveTo(bx + sway, -h * 0.55, bx + sway * 1.35, -h);
+        ctx.stroke();
+        ctx.strokeStyle = '#4c0519';
+        ctx.lineWidth = 2.4;
+        ctx.stroke();
+      }
+    } else {
+      // Classic 7 writhing sumi-e ink-flame tendrils (intensified in Boss Phase 2)
+      const innerColor =
+        skinId === 'solar_phoenix'
+          ? '#fef08a'
+          : skinId === 'storm_shogun'
+            ? '#fde047'
+            : '#0a090e';
+      const boost = isEnraged ? 1.25 : 1;
+      for (let i = -3; i <= 3; i++) {
+        const bx = i * 11 * boost;
+        const h = (18 + Math.sin(time * 7.5 + i * 1.4) * 9 + (3 - Math.abs(i)) * 4) * boost;
+        const sway = Math.cos(time * 6 + i * 1.9) * 8;
+        ctx.strokeStyle = rimColor;
+        ctx.lineWidth = isEnraged ? 5.8 : 5;
+        ctx.lineCap = 'round';
+        ctx.beginPath();
+        ctx.moveTo(bx, 0);
+        ctx.quadraticCurveTo(bx + sway, -h * 0.55, bx + sway * 1.35, -h);
+        ctx.stroke();
+
+        ctx.strokeStyle = innerColor;
+        ctx.lineWidth = skinId === 'solar_phoenix' || skinId === 'storm_shogun' ? 2.2 : 3;
+        ctx.stroke();
+      }
+    }
+  } finally {
+    ctx.restore();
   }
-  ctx.restore();
 }
 
 function renderCelScarf(
@@ -1129,829 +2291,84 @@ function renderCelScarf(
   primaryColor: string,
   highlightColor: string
 ): void {
+  const pts = scarf.filter((n) => Number.isFinite(n.x) && Number.isFinite(n.y));
+  if (pts.length < 2) return;
+
   ctx.save();
-  ctx.lineCap = 'round';
-  ctx.lineJoin = 'round';
+  try {
+    ctx.lineCap = 'round';
+    ctx.lineJoin = 'round';
 
-  // Build thick cel-shaded scarf ribbon polygon with bold black outline!
-  const drawRibbon = (extraWidth: number, color: string) => {
-    ctx.strokeStyle = color;
-    for (let i = 0; i < scarf.length - 1; i++) {
-      const a = scarf[i];
-      const b = scarf[i + 1];
-      const t = i / (scarf.length - 1);
-      ctx.lineWidth = Math.max(4, 15 * (1 - t * 0.42)) + extraWidth;
-      ctx.beginPath();
-      ctx.moveTo(a.x, a.y);
-      ctx.lineTo(b.x, b.y);
-      ctx.stroke();
-    }
-  };
-
-  drawRibbon(4.5, '#0b0c10'); // Bold anime black ink outline
-  drawRibbon(0, primaryColor); // Deep scarf body
-  drawRibbon(-5, highlightColor); // Bright cel highlight band
-  ctx.restore();
-}
-
-function renderHeroHeadGear(
-  ctx: CanvasRenderingContext2D,
-  joints: SkeletonJoints,
-  headR: number,
-  gear: 'volt_visor' | 'flame_band' | 'phantom_eyes',
-  time: number
-): void {
-  ctx.save();
-  if (gear === 'volt_visor') {
-    // Sleek cyber-thunder visor with glowing gold slit
-    ctx.fillStyle = '#0f172a';
-    ctx.fillRect(joints.head.x - 1, joints.head.y - 5, headR + 2, 7);
-    ctx.fillStyle = '#facc15';
-    ctx.fillRect(joints.head.x + 2, joints.head.y - 3, 9, 3);
-  } else if (gear === 'flame_band') {
-    // Crimson-gold ronin headband with fluttering ribbons
-    const flutter = Math.sin(time * 11) * 4;
-    ctx.strokeStyle = '#0b0c10';
-    ctx.lineWidth = 6.5;
-    ctx.beginPath();
-    ctx.moveTo(joints.head.x - headR, joints.head.y - 5);
-    ctx.lineTo(joints.head.x + headR, joints.head.y - 5);
-    ctx.stroke();
-    ctx.strokeStyle = '#f97316';
-    ctx.lineWidth = 3.5;
-    ctx.stroke();
-    ctx.beginPath();
-    ctx.moveTo(joints.head.x - headR, joints.head.y - 5);
-    ctx.quadraticCurveTo(joints.head.x - headR - 14, joints.head.y - 9 + flutter, joints.head.x - headR - 26, joints.head.y - 2 + flutter);
-    ctx.strokeStyle = '#0b0c10';
-    ctx.lineWidth = 6;
-    ctx.stroke();
-    ctx.strokeStyle = '#fb923c';
-    ctx.lineWidth = 3;
-    ctx.stroke();
-  } else if (gear === 'phantom_eyes') {
-    // Razor-sharp glowing emerald-white assassin eyes
-    ctx.fillStyle = '#0b0c10';
-    ctx.beginPath();
-    ctx.moveTo(joints.head.x, joints.head.y - 4);
-    ctx.lineTo(joints.head.x + 11, joints.head.y - 2);
-    ctx.lineTo(joints.head.x + 3, joints.head.y + 3);
-    ctx.closePath();
-    ctx.fill();
-    ctx.fillStyle = '#ecfdf5';
-    ctx.beginPath();
-    ctx.moveTo(joints.head.x + 2, joints.head.y - 3);
-    ctx.lineTo(joints.head.x + 10, joints.head.y - 1.5);
-    ctx.lineTo(joints.head.x + 4, joints.head.y + 1.5);
-    ctx.closePath();
-    ctx.fill();
-  }
-  ctx.restore();
-}
-
-/**
- * Renders each character's dramatic Awakened back transformation:
- * - KURO: 3 Floating Crimson-Black Phantom Swords + dark crimson energy mantle
- * - RAIJIN: Iconic Spinning Raijin Taiko Thunder Drum Halo (5 golden-cyan lightning drums!)
- * - KAGURA: Colossal Animated Blazing Phoenix Flame Wings
- * - ZERO: Twin Jagged Spectral Shadow Wings + 4 Orbiting Neon-Emerald Phantom Kunai
- */
-function renderAwakenedBackForm(
-  ctx: CanvasRenderingContext2D,
-  joints: SkeletonJoints,
-  form: CharacterId,
-  time: number
-): void {
-  ctx.save();
-  const cx = joints.neck.x - 6;
-  const cy = joints.neck.y + 6;
-
-  if (form === 'kuro') {
-    // 3 Orbiting Dark-Crimson Phantom Blades hovering behind Kuro's shoulders!
-    const bladeConfigs = [
-      { ox: -36, oy: -28, rot: -2.25, phase: 0 },
-      { ox: -48, oy: -4, rot: -2.65, phase: 2.1 },
-      { ox: -30, oy: 18, rot: -3.0, phase: 4.2 },
-    ];
-    for (const b of bladeConfigs) {
-      const bob = Math.sin(time * 7 + b.phase) * 5;
-      ctx.save();
-      ctx.translate(cx + b.ox, cy + b.oy + bob);
-      ctx.rotate(b.rot + Math.sin(time * 4 + b.phase) * 0.08);
-      ctx.strokeStyle = 'rgba(239, 68, 68, 0.42)';
-      ctx.lineWidth = 9;
-      ctx.beginPath();
-      ctx.moveTo(-14, 0);
-      ctx.lineTo(34, 0);
-      ctx.stroke();
-
-      ctx.fillStyle = '#09070c';
-      ctx.strokeStyle = '#ef4444';
-      ctx.lineWidth = 2.2;
-      ctx.beginPath();
-      ctx.moveTo(-12, -3.5);
-      ctx.lineTo(24, -4.5);
-      ctx.lineTo(38, 0);
-      ctx.lineTo(24, 4.5);
-      ctx.lineTo(-12, 3.5);
-      ctx.closePath();
-      ctx.fill();
-      ctx.stroke();
-      ctx.restore();
-    }
-  } else if (form === 'raijin') {
-    // Iconic Raijin Thunder God Spinning Taiko Drum Ring behind back!
-    const ringR = 34;
-    ctx.save();
-    ctx.translate(cx - 8, cy - 6);
-    // Electric outer halo ring
-    ctx.strokeStyle = 'rgba(56, 189, 248, 0.5)';
-    ctx.lineWidth = 7;
-    ctx.beginPath();
-    ctx.arc(0, 0, ringR, 0, Math.PI * 2);
-    ctx.stroke();
-
-    ctx.strokeStyle = '#fef08a';
-    ctx.lineWidth = 2.4;
-    ctx.stroke();
-
-    // 5 Spinning Taiko Lightning Drums around the ring
-    for (let i = 0; i < 5; i++) {
-      const a = (i / 5) * Math.PI * 2 + time * 2.6;
-      const dx = Math.cos(a) * ringR;
-      const dy = Math.sin(a) * ringR;
-      ctx.fillStyle = '#0b0c10';
-      ctx.beginPath();
-      ctx.arc(dx, dy, 8.5, 0, Math.PI * 2);
-      ctx.fill();
-      ctx.fillStyle = i % 2 === 0 ? '#facc15' : '#38bdf8';
-      ctx.beginPath();
-      ctx.arc(dx, dy, 6, 0, Math.PI * 2);
-      ctx.fill();
-      ctx.fillStyle = '#ffffff';
-      ctx.beginPath();
-      ctx.arc(dx, dy, 2.3, 0, Math.PI * 2);
-      ctx.fill();
-    }
-    ctx.restore();
-  } else if (form === 'kagura') {
-    // Colossal Animated Blazing Phoenix Flame Wings unfurling behind Kagura!
-    const flap = Math.sin(time * 8.5) * 10;
-    const drawPhoenixWing = (dirX: number, scale: number) => {
-      ctx.save();
-      ctx.translate(cx - 4, cy + 2);
-      // Outer crimson-orange flame plumage
-      ctx.fillStyle = 'rgba(234, 88, 12, 0.84)';
-      ctx.strokeStyle = '#0b0c10';
-      ctx.lineWidth = 2.6;
-      ctx.beginPath();
-      ctx.moveTo(0, 0);
-      ctx.quadraticCurveTo(dirX * 36 * scale, -44 * scale + flap, dirX * 72 * scale, -28 * scale + flap * 1.2);
-      ctx.lineTo(dirX * 54 * scale, -8 * scale + flap * 0.8);
-      ctx.lineTo(dirX * 68 * scale, 6 * scale + flap * 0.9);
-      ctx.lineTo(dirX * 42 * scale, 12 * scale + flap * 0.5);
-      ctx.lineTo(dirX * 48 * scale, 28 * scale + flap * 0.4);
-      ctx.quadraticCurveTo(dirX * 18 * scale, 18 * scale, 0, 8);
-      ctx.closePath();
-      ctx.fill();
-      ctx.stroke();
-
-      // Inner incandescent gold-yellow core feathers
-      ctx.fillStyle = '#fde047';
-      ctx.beginPath();
-      ctx.moveTo(0, 0);
-      ctx.quadraticCurveTo(dirX * 26 * scale, -26 * scale + flap * 0.7, dirX * 50 * scale, -18 * scale + flap);
-      ctx.lineTo(dirX * 34 * scale, 4 * scale + flap * 0.5);
-      ctx.quadraticCurveTo(dirX * 14 * scale, 10 * scale, 0, 5);
-      ctx.closePath();
-      ctx.fill();
-      ctx.restore();
+    const drawQuadraticRibbon = (extraWidth: number, color: string, offsetY = 0) => {
+      ctx.strokeStyle = color;
+      for (let i = 0; i < pts.length - 1; i++) {
+        const a = pts[i];
+        const b = pts[i + 1];
+        const prev = i > 0 ? pts[i - 1] : a;
+        const t = i / (pts.length - 1);
+        const w = Math.max(2.2, 15 * (1 - t * 0.58) + extraWidth);
+        ctx.lineWidth = w;
+        const sx = i === 0 ? a.x : (prev.x + a.x) * 0.5;
+        const sy = (i === 0 ? a.y : (prev.y + a.y) * 0.5) + offsetY;
+        const ex = i === pts.length - 2 ? b.x : (a.x + b.x) * 0.5;
+        const ey = (i === pts.length - 2 ? b.y : (a.y + b.y) * 0.5) + offsetY;
+        ctx.beginPath();
+        ctx.moveTo(sx, sy);
+        ctx.quadraticCurveTo(a.x, a.y + offsetY, ex, ey);
+        ctx.stroke();
+      }
     };
-    drawPhoenixWing(-1, 1.0);
-    drawPhoenixWing(0.55, 0.72);
-  } else if (form === 'zero') {
-    // Twin Jagged Spectral Void Shadow Wings + 4 Orbiting Emerald Phantom Kunai!
-    const flutter = Math.sin(time * 10) * 8;
-    ctx.save();
-    ctx.translate(cx - 2, cy + 4);
-    ctx.fillStyle = 'rgba(6, 78, 59, 0.82)';
-    ctx.strokeStyle = '#34d399';
-    ctx.lineWidth = 2.4;
-    ctx.beginPath();
-    ctx.moveTo(0, -4);
-    ctx.lineTo(-56, -34 + flutter);
-    ctx.lineTo(-38, -8 + flutter * 0.6);
-    ctx.lineTo(-64, 4 + flutter * 0.9);
-    ctx.lineTo(-34, 16 + flutter * 0.5);
-    ctx.lineTo(-46, 36 + flutter * 0.4);
-    ctx.lineTo(-8, 12);
-    ctx.closePath();
-    ctx.fill();
-    ctx.stroke();
 
-    // 4 Orbiting Emerald Kunai spinning smoothly around Zero
-    for (let i = 0; i < 4; i++) {
-      const a = (i / 4) * Math.PI * 2 + time * 4.5;
-      const kx = Math.cos(a) * 34;
-      const ky = Math.sin(a) * 20;
-      ctx.save();
-      ctx.translate(kx, ky);
-      ctx.rotate(a + Math.PI * 0.5);
-      ctx.fillStyle = '#34d399';
-      ctx.strokeStyle = '#0b0c10';
-      ctx.lineWidth = 1.8;
-      ctx.beginPath();
-      ctx.moveTo(11, 0);
-      ctx.lineTo(-6, -3.5);
-      ctx.lineTo(-3, 0);
-      ctx.lineTo(-6, 3.5);
-      ctx.closePath();
-      ctx.fill();
-      ctx.stroke();
-      ctx.restore();
+    // Bold sumi-e ink outline
+    drawQuadraticRibbon(4.6, '#0b0c10');
+    // Primary cloth body
+    drawQuadraticRibbon(0, primaryColor);
+    // Subtle underside fold shadow
+    drawQuadraticRibbon(-6.5, colorWithAlpha('#090b10', 0.3), 2.4);
+    // Top rim highlight band
+    drawQuadraticRibbon(-5.8, highlightColor, -1.2);
+
+    // Tapered swallowtail forked ink tips at tail end
+    const tail = pts[pts.length - 1];
+    const prev = pts[pts.length - 2];
+    const dx = tail.x - prev.x;
+    const dy = tail.y - prev.y;
+    const len = Math.hypot(dx, dy);
+    if (len > 0.5) {
+      const ux = dx / len;
+      const uy = dy / len;
+      const px = -uy;
+      const py = ux;
+      const drawFork = (spread: number, forkLen: number) => {
+        const tipX = tail.x + ux * forkLen + px * spread;
+        const tipY = tail.y + uy * forkLen + py * spread;
+        ctx.fillStyle = primaryColor;
+        ctx.strokeStyle = '#0b0c10';
+        ctx.lineWidth = 2;
+        ctx.beginPath();
+        ctx.moveTo(tail.x + px * (spread * 0.35), tail.y + py * (spread * 0.35));
+        ctx.quadraticCurveTo(
+          tail.x + ux * (forkLen * 0.55) + px * (spread * 0.7),
+          tail.y + uy * (forkLen * 0.55) + py * (spread * 0.7),
+          tipX,
+          tipY
+        );
+        ctx.quadraticCurveTo(
+          tail.x + ux * (forkLen * 0.4),
+          tail.y + uy * (forkLen * 0.4),
+          tail.x,
+          tail.y
+        );
+        ctx.closePath();
+        ctx.fill();
+        ctx.stroke();
+      };
+      drawFork(6, 13);
+      drawFork(-5, 10);
     }
-    ctx.restore();
-  }
-
-  ctx.restore();
-}
-
-/**
- * Renders each character's Awakened head/crown transformation (Horns, Plasma Spikes, Solar Crown, Oni Eye-Trails).
- */
-function renderAwakenedHeadForm(
-  ctx: CanvasRenderingContext2D,
-  joints: SkeletonJoints,
-  headR: number,
-  form: CharacterId,
-  time: number
-): void {
-  ctx.save();
-  const hx = joints.head.x;
-  const hy = joints.head.y;
-
-  if (form === 'kuro') {
-    // Curved Crimson-Obsidian Demon Horns + Fierce Glowing Blood-Red Eyes!
-    ctx.strokeStyle = '#0b0c10';
-    ctx.lineWidth = 5.5;
-    ctx.lineCap = 'round';
-    ctx.beginPath();
-    ctx.moveTo(hx - 4, hy - headR + 2);
-    ctx.quadraticCurveTo(hx - 14, hy - headR - 14, hx - 22, hy - headR - 16);
-    ctx.moveTo(hx + 4, hy - headR + 2);
-    ctx.quadraticCurveTo(hx + 12, hy - headR - 12, hx + 18, hy - headR - 14);
-    ctx.stroke();
-
-    ctx.strokeStyle = '#ef4444';
-    ctx.lineWidth = 2.8;
-    ctx.stroke();
-
-    // Glowing Crimson Demon Eye Slit + Light Trail
-    ctx.fillStyle = '#fecaca';
-    ctx.beginPath();
-    ctx.moveTo(hx + 1, hy - 3);
-    ctx.lineTo(hx + 11, hy - 1);
-    ctx.lineTo(hx + 3, hy + 2.5);
-    ctx.closePath();
-    ctx.fill();
-    ctx.strokeStyle = 'rgba(239, 68, 68, 0.85)';
-    ctx.lineWidth = 2.5;
-    ctx.beginPath();
-    ctx.moveTo(hx + 2, hy - 1);
-    ctx.quadraticCurveTo(hx - 14, hy - 4 + Math.sin(time * 16) * 3, hx - 28, hy - 8);
-    ctx.stroke();
-  } else if (form === 'raijin') {
-    // Crackling Golden-Cyan Super-Plasma Hair Spikes shooting up from crown!
-    const pulse = Math.sin(time * 20) * 2.5;
-    ctx.fillStyle = '#facc15';
-    ctx.strokeStyle = '#0b0c10';
-    ctx.lineWidth = 2.4;
-    ctx.beginPath();
-    ctx.moveTo(hx - 10, hy - headR + 3);
-    ctx.lineTo(hx - 16, hy - headR - 14 - pulse);
-    ctx.lineTo(hx - 4, hy - headR - 4);
-    ctx.lineTo(hx + 1, hy - headR - 20 - pulse);
-    ctx.lineTo(hx + 7, hy - headR - 5);
-    ctx.lineTo(hx + 16, hy - headR - 12 - pulse);
-    ctx.lineTo(hx + 10, hy - headR + 3);
-    ctx.closePath();
-    ctx.fill();
-    ctx.stroke();
-
-    // Blazing white-gold visor eye flare
-    ctx.strokeStyle = '#fef08a';
-    ctx.lineWidth = 3;
-    ctx.beginPath();
-    ctx.moveTo(hx + 4, hy - 1);
-    ctx.lineTo(hx - 24, hy - 6 + Math.sin(time * 18) * 3);
-    ctx.stroke();
-  } else if (form === 'kagura') {
-    // Radiant Blazing Solar Flame Crown hovering above head + glowing spine core
-    const flicker = Math.sin(time * 15) * 3;
-    ctx.fillStyle = '#fde047';
-    ctx.strokeStyle = '#ea580c';
-    ctx.lineWidth = 2.6;
-    ctx.beginPath();
-    ctx.moveTo(hx - 12, hy - headR - 1);
-    ctx.lineTo(hx - 10, hy - headR - 14 - flicker);
-    ctx.lineTo(hx - 3, hy - headR - 6);
-    ctx.lineTo(hx, hy - headR - 19 - flicker);
-    ctx.lineTo(hx + 3, hy - headR - 6);
-    ctx.lineTo(hx + 10, hy - headR - 14 - flicker);
-    ctx.lineTo(hx + 12, hy - headR - 1);
-    ctx.closePath();
-    ctx.fill();
-    ctx.stroke();
-
-    // Glowing solar spine highlight
-    ctx.strokeStyle = 'rgba(254, 240, 138, 0.78)';
-    ctx.lineWidth = 3.2;
-    ctx.beginPath();
-    ctx.moveTo(joints.hip.x, joints.hip.y);
-    ctx.quadraticCurveTo(joints.spineMid.x, joints.spineMid.y, joints.neck.x, joints.neck.y);
-    ctx.stroke();
-  } else if (form === 'zero') {
-    // Blazing Neon-Emerald Oni Eye-Stream Trail + Sharp Phantom Horns
-    ctx.strokeStyle = '#34d399';
-    ctx.lineWidth = 3.2;
-    ctx.lineCap = 'round';
-    ctx.beginPath();
-    ctx.moveTo(hx + 6, hy - 1);
-    ctx.quadraticCurveTo(hx - 14, hy - 5 + Math.sin(time * 18) * 4, hx - 36, hy - 11);
-    ctx.stroke();
-    ctx.strokeStyle = '#ecfdf5';
-    ctx.lineWidth = 1.5;
-    ctx.stroke();
-  }
-
-  ctx.restore();
-}
-
-function renderBossOutfitDetails(
-  ctx: CanvasRenderingContext2D,
-  joints: SkeletonJoints,
-  headR: number,
-  outfit: BossStyleOutfit
-): void {
-  ctx.save();
-  if (outfit === 'haiku') {
-    // Dark visor stripe across face
-    ctx.fillStyle = '#0f172a';
-    ctx.fillRect(joints.head.x - 2, joints.head.y - 4, headR + 2, 5);
-  } else if (outfit === 'astra') {
-    // Ninja bandit mask + light blue tunic vest
-    ctx.fillStyle = '#111827';
-    ctx.fillRect(joints.head.x - headR + 2, joints.head.y - 4, headR * 2 - 2, 7);
-    ctx.fillStyle = '#fef08a';
-    ctx.fillRect(joints.head.x + 2, joints.head.y - 2, 4, 3);
-    ctx.strokeStyle = '#93c5fd';
-    ctx.lineWidth = 10;
-    ctx.beginPath();
-    ctx.moveTo(joints.hip.x, joints.hip.y - 4);
-    ctx.lineTo(joints.neck.x, joints.neck.y + 4);
-    ctx.stroke();
-  } else if (outfit === 'opus') {
-    // Fierce glowing yellow anime eyes on steel-blue head
-    ctx.fillStyle = '#facc15';
-    ctx.beginPath();
-    ctx.moveTo(joints.head.x + 1, joints.head.y - 3);
-    ctx.lineTo(joints.head.x + 9, joints.head.y - 1);
-    ctx.lineTo(joints.head.x + 3, joints.head.y + 2);
-    ctx.closePath();
-    ctx.fill();
-  } else if (outfit === 'sol') {
-    // Sleek glowing cyan visor goggles on pure white head
-    ctx.fillStyle = '#0f172a';
-    ctx.fillRect(joints.head.x - 2, joints.head.y - 5, headR + 2, 8);
-    ctx.fillStyle = '#22d3ee';
-    ctx.fillRect(joints.head.x + 1, joints.head.y - 3, 8, 4);
-  } else if (outfit === 'fable') {
-    // Glowing pure white alien eyes on electric lime-green head
-    ctx.fillStyle = '#ffffff';
-    ctx.beginPath();
-    ctx.ellipse(joints.head.x + 4, joints.head.y - 2, 3.5, 2.2, -0.2, 0, Math.PI * 2);
-    ctx.fill();
-  }
-  ctx.restore();
-}
-
-function drawLimb(ctx: CanvasRenderingContext2D, a: Vec2, b: Vec2, c: Vec2): void {
-  ctx.beginPath();
-  ctx.moveTo(a.x, a.y);
-  ctx.lineTo(b.x, b.y);
-  ctx.lineTo(c.x, c.y);
-  ctx.stroke();
-}
-
-function renderWeapon(
-  ctx: CanvasRenderingContext2D,
-  joints: SkeletonJoints,
-  weapon: NonNullable<StickmanRenderOptions['weapon']>,
-  time: number,
-  whiteFlash: boolean
-): void {
-  ctx.save();
-  ctx.translate(joints.handR.x, joints.handR.y);
-  ctx.rotate(joints.weaponAngle);
-
-  if (whiteFlash) {
-    ctx.strokeStyle = '#ffffff';
-    ctx.lineWidth = 5;
-    ctx.beginPath();
-    ctx.moveTo(-8, 0);
-    ctx.lineTo(54, 0);
-    ctx.stroke();
-    ctx.restore();
-    return;
-  }
-
-  switch (weapon) {
-    case 'katana': {
-      // Diamond-wrapped katana hilt + gold tsuba + gleaming outlined steel blade (ref 00:20–00:35)
-      ctx.strokeStyle = '#0b0c10';
-      ctx.lineWidth = 7.5;
-      ctx.beginPath();
-      ctx.moveTo(-16, 0);
-      ctx.lineTo(2, 0);
-      ctx.stroke();
-      ctx.strokeStyle = '#f8fafc';
-      ctx.lineWidth = 3.2;
-      ctx.setLineDash([3, 3]);
-      ctx.stroke();
-      ctx.setLineDash([]);
-
-      ctx.strokeStyle = '#facc15';
-      ctx.lineWidth = 3.5;
-      ctx.beginPath();
-      ctx.moveTo(2, -7);
-      ctx.lineTo(2, 7);
-      ctx.stroke();
-
-      // Outlined silver-white katana blade
-      ctx.strokeStyle = '#0b0c10';
-      ctx.lineWidth = 6.5;
-      ctx.beginPath();
-      ctx.moveTo(4, 0);
-      ctx.quadraticCurveTo(36, -2, 64, -4);
-      ctx.stroke();
-
-      ctx.strokeStyle = '#f8fafc';
-      ctx.lineWidth = 3.4;
-      ctx.stroke();
-      break;
-    }
-    case 'blood_greatsword': {
-      // Massive Black-Core Crimson-Edged Blood Greatsword (ref 00:41–00:46!)
-      ctx.fillStyle = '#0b0c10';
-      ctx.fillRect(-18, -3.5, 22, 7);
-      ctx.fillStyle = '#dc2626';
-      ctx.fillRect(2, -12, 6, 24);
-      ctx.strokeStyle = '#0b0c10';
-      ctx.lineWidth = 2;
-      ctx.strokeRect(2, -12, 6, 24);
-
-      ctx.beginPath();
-      ctx.moveTo(8, -7.5);
-      ctx.lineTo(102, -4.5);
-      ctx.lineTo(124, 0);
-      ctx.lineTo(102, 5.5);
-      ctx.lineTo(8, 7.5);
-      ctx.closePath();
-      ctx.strokeStyle = 'rgba(239, 68, 68, 0.36)';
-      ctx.lineWidth = 11;
-      ctx.stroke();
-      ctx.fillStyle = '#09070c';
-      ctx.fill();
-      ctx.strokeStyle = '#ef4444';
-      ctx.lineWidth = 3;
-      ctx.stroke();
-
-      ctx.strokeStyle = '#fca5a5';
-      ctx.lineWidth = 1.5;
-      ctx.beginPath();
-      ctx.moveTo(14, 0);
-      ctx.lineTo(104, 0);
-      ctx.stroke();
-      break;
-    }
-    case 'volt_spear': {
-      // Raijin's cel-shaded cyan-gold lightning spear
-      ctx.strokeStyle = '#0b0c10';
-      ctx.lineWidth = 7.2;
-      ctx.beginPath();
-      ctx.moveTo(-36, 0);
-      ctx.lineTo(74, 0);
-      ctx.stroke();
-      ctx.strokeStyle = '#38bdf8';
-      ctx.lineWidth = 3.6;
-      ctx.stroke();
-      ctx.fillStyle = '#facc15';
-      ctx.strokeStyle = '#0b0c10';
-      ctx.lineWidth = 2.4;
-      ctx.beginPath();
-      ctx.moveTo(66, -8);
-      ctx.lineTo(96, 0);
-      ctx.lineTo(66, 8);
-      ctx.lineTo(72, 0);
-      ctx.closePath();
-      ctx.fill();
-      ctx.stroke();
-      break;
-    }
-    case 'thunder_halberd': {
-      // Awakened Raijin's blazing Storm Halberd
-      ctx.strokeStyle = 'rgba(56, 189, 248, 0.35)';
-      ctx.lineWidth = 16;
-      ctx.beginPath();
-      ctx.moveTo(-42, 0);
-      ctx.lineTo(108, 0);
-      ctx.stroke();
-      ctx.strokeStyle = '#0b0c10';
-      ctx.lineWidth = 8.5;
-      ctx.beginPath();
-      ctx.moveTo(-42, 0);
-      ctx.lineTo(92, 0);
-      ctx.stroke();
-      ctx.strokeStyle = '#fef08a';
-      ctx.lineWidth = 4;
-      ctx.stroke();
-      ctx.fillStyle = '#0ea5e9';
-      ctx.strokeStyle = '#0b0c10';
-      ctx.lineWidth = 2.6;
-      ctx.beginPath();
-      ctx.moveTo(64, -14);
-      ctx.lineTo(114, 0);
-      ctx.lineTo(64, 14);
-      ctx.lineTo(76, 0);
-      ctx.closePath();
-      ctx.fill();
-      ctx.stroke();
-      break;
-    }
-    case 'flame_nodachi': {
-      // Kagura's long curved fiery nodachi blade
-      ctx.strokeStyle = '#0b0c10';
-      ctx.lineWidth = 8;
-      ctx.beginPath();
-      ctx.moveTo(-18, 0);
-      ctx.lineTo(4, 0);
-      ctx.stroke();
-      ctx.strokeStyle = '#f97316';
-      ctx.lineWidth = 4;
-      ctx.beginPath();
-      ctx.moveTo(4, -9);
-      ctx.lineTo(4, 9);
-      ctx.stroke();
-      ctx.strokeStyle = '#0b0c10';
-      ctx.lineWidth = 8.5;
-      ctx.beginPath();
-      ctx.moveTo(6, 0);
-      ctx.quadraticCurveTo(44, -4, 82, -8);
-      ctx.stroke();
-      ctx.strokeStyle = '#fb923c';
-      ctx.lineWidth = 4.6;
-      ctx.stroke();
-      ctx.strokeStyle = '#fef08a';
-      ctx.lineWidth = 1.8;
-      ctx.stroke();
-      break;
-    }
-    case 'solar_greatblade': {
-      // Awakened Kagura's massive obsidian-molten solar greatblade
-      ctx.fillStyle = '#0b0c10';
-      ctx.fillRect(-20, -4, 24, 8);
-      ctx.fillStyle = '#facc15';
-      ctx.fillRect(2, -14, 7, 28);
-      ctx.beginPath();
-      ctx.moveTo(9, -9);
-      ctx.lineTo(106, -5);
-      ctx.lineTo(130, 0);
-      ctx.lineTo(106, 6);
-      ctx.lineTo(9, 9);
-      ctx.closePath();
-      ctx.strokeStyle = 'rgba(249, 115, 22, 0.42)';
-      ctx.lineWidth = 12;
-      ctx.stroke();
-      ctx.fillStyle = '#1c0f0a';
-      ctx.fill();
-      ctx.strokeStyle = '#f97316';
-      ctx.lineWidth = 3.2;
-      ctx.stroke();
-      ctx.strokeStyle = '#fef08a';
-      ctx.lineWidth = 2;
-      ctx.beginPath();
-      ctx.moveTo(14, 0);
-      ctx.lineTo(110, 0);
-      ctx.stroke();
-      break;
-    }
-    case 'twin_daggers': {
-      // Zero's sleek curved emerald phantom dagger
-      ctx.strokeStyle = '#0b0c10';
-      ctx.lineWidth = 7;
-      ctx.beginPath();
-      ctx.moveTo(-8, 0);
-      ctx.lineTo(38, -2);
-      ctx.stroke();
-      ctx.strokeStyle = '#34d399';
-      ctx.lineWidth = 3.5;
-      ctx.stroke();
-      ctx.strokeStyle = '#ecfdf5';
-      ctx.lineWidth = 1.4;
-      ctx.stroke();
-      break;
-    }
-    case 'void_sabers': {
-      // Awakened Zero's glowing neon-emerald void saber
-      ctx.strokeStyle = 'rgba(16, 185, 129, 0.36)';
-      ctx.lineWidth = 14;
-      ctx.beginPath();
-      ctx.moveTo(-6, 0);
-      ctx.lineTo(74, -4);
-      ctx.stroke();
-      ctx.strokeStyle = '#0b0c10';
-      ctx.lineWidth = 8;
-      ctx.beginPath();
-      ctx.moveTo(-8, 0);
-      ctx.lineTo(72, -4);
-      ctx.stroke();
-      ctx.strokeStyle = '#10b981';
-      ctx.lineWidth = 4.2;
-      ctx.stroke();
-      ctx.strokeStyle = '#ffffff';
-      ctx.lineWidth = 1.8;
-      ctx.stroke();
-      break;
-    }
-    case 'dagger': {
-      ctx.strokeStyle = '#0b0c10';
-      ctx.lineWidth = 6;
-      ctx.beginPath();
-      ctx.moveTo(0, 0);
-      ctx.lineTo(24, 0);
-      ctx.stroke();
-      ctx.strokeStyle = '#ffffff';
-      ctx.lineWidth = 3;
-      ctx.stroke();
-      break;
-    }
-    case 'sword':
-    case 'shield_sword': {
-      ctx.strokeStyle = '#0b0c10';
-      ctx.lineWidth = 6.5;
-      ctx.beginPath();
-      ctx.moveTo(-6, 0);
-      ctx.lineTo(44, 0);
-      ctx.stroke();
-      ctx.strokeStyle = '#f8fafc';
-      ctx.lineWidth = 3.2;
-      ctx.stroke();
-      break;
-    }
-    case 'pistol': {
-      ctx.fillStyle = '#101218';
-      ctx.fillRect(-1, -6, 20, 8);
-      ctx.fillRect(-1, 0, 7, 12);
-      ctx.fillStyle = '#475569';
-      ctx.fillRect(1, -4, 16, 4);
-      break;
-    }
-    case 'spear': {
-      ctx.strokeStyle = '#0b0c10';
-      ctx.lineWidth = 6.8;
-      ctx.beginPath();
-      ctx.moveTo(-38, 0);
-      ctx.lineTo(82, 0);
-      ctx.stroke();
-      ctx.strokeStyle = '#cbd5e1';
-      ctx.lineWidth = 3.4;
-      ctx.stroke();
-      ctx.fillStyle = '#7dd3fc';
-      ctx.strokeStyle = '#0b0c10';
-      ctx.lineWidth = 2.2;
-      ctx.beginPath();
-      ctx.moveTo(78, -7);
-      ctx.lineTo(104, 0);
-      ctx.lineTo(78, 7);
-      ctx.closePath();
-      ctx.fill();
-      ctx.stroke();
-      break;
-    }
-    case 'laser_blade': {
-      ctx.strokeStyle = '#0b0c10';
-      ctx.lineWidth = 7;
-      ctx.beginPath();
-      ctx.moveTo(-12, 0);
-      ctx.lineTo(4, 0);
-      ctx.stroke();
-      ctx.strokeStyle = 'rgba(239, 68, 68, 0.36)';
-      ctx.lineWidth = 14;
-      ctx.beginPath();
-      ctx.moveTo(4, 0);
-      ctx.lineTo(74, 0);
-      ctx.stroke();
-      ctx.strokeStyle = '#ef4444';
-      ctx.lineWidth = 6.5;
-      ctx.beginPath();
-      ctx.moveTo(4, 0);
-      ctx.lineTo(74, 0);
-      ctx.stroke();
-      ctx.strokeStyle = '#ffffff';
-      ctx.lineWidth = 2.5;
-      ctx.beginPath();
-      ctx.moveTo(4, 0);
-      ctx.lineTo(72, 0);
-      ctx.stroke();
-      break;
-    }
-    case 'sniper_rifle': {
-      ctx.fillStyle = '#0b0c10';
-      ctx.fillRect(-10, -6, 38, 9);
-      ctx.fillStyle = '#22d3ee';
-      ctx.fillRect(8, -3, 18, 3);
-      break;
-    }
-    case 'neon_orb': {
-      const r = 8 + Math.sin(time * 12) * 2;
-      ctx.fillStyle = 'rgba(217, 70, 239, 0.36)';
-      ctx.beginPath();
-      ctx.arc(8, 0, r + 7, 0, Math.PI * 2);
-      ctx.fill();
-      ctx.fillStyle = '#d946ef';
-      ctx.beginPath();
-      ctx.arc(8, 0, r, 0, Math.PI * 2);
-      ctx.fill();
-      ctx.fillStyle = '#ffffff';
-      ctx.beginPath();
-      ctx.arc(8, 0, r * 0.5, 0, Math.PI * 2);
-      ctx.fill();
-      break;
-    }
-  }
-  ctx.restore();
-}
-
-export function renderAfterimages(ctx: CanvasRenderingContext2D, afterimages: Afterimage[]): void {
-  for (const a of afterimages) {
-    const alpha = Math.max(0, 1 - a.life / a.maxLife) * 0.38;
-    ctx.save();
-    ctx.globalAlpha = alpha;
-    ctx.translate(a.x, a.y);
-    ctx.scale(a.facing, 1);
-    strokeSkeletonLimbs(ctx, a.joints, 8.5, 11, a.color);
+  } finally {
     ctx.restore();
   }
 }
 
-/**
- * Wide anime fan-shaped blade smear wedges + razor bright cutting edge (matches ref 00:03–00:06 & 00:30–00:35!)
- */
-export function renderSlashTrails(ctx: CanvasRenderingContext2D, trails: SlashTrail[]): void {
-  for (const s of trails) {
-    const t = Math.min(1, s.life / s.maxLife);
-    const inv = Math.max(0, 1 - t);
-    // Dynamic anime smear progression: blade opens rapidly (0->0.35), then tail catches up to tip!
-    const headProgress = Math.min(1, t / 0.34);
-    const headEased = 1 - Math.pow(1 - headProgress, 3);
-    const tailProgress = Math.max(0, (t - 0.14) / 0.86);
-    const tailEased = tailProgress * tailProgress;
 
-    const span = s.endAngle - s.startAngle;
-    const curStart = s.startAngle + span * tailEased;
-    const curEnd = s.startAngle + span * headEased;
-    if (Math.abs(curEnd - curStart) < 0.04) continue;
-
-    const ccw = span < 0;
-
-    ctx.save();
-    ctx.translate(s.x, s.y);
-    ctx.scale(s.facing, 1);
-    ctx.lineCap = 'round';
-
-    // Wide translucent anime fan wedge behind the blade sweep
-    ctx.globalAlpha = inv * 0.42;
-    ctx.fillStyle = s.outerColor;
-    ctx.beginPath();
-    ctx.arc(0, 0, s.radius + s.thickness * 0.55, curStart, curEnd, ccw);
-    ctx.arc(0, 0, Math.max(12, s.radius * 0.34), curEnd, curStart, !ccw);
-    ctx.closePath();
-    ctx.fill();
-
-    // Primary sharp outer arc edge
-    ctx.globalAlpha = Math.min(1, inv * 1.15);
-    ctx.strokeStyle = s.outerColor;
-    ctx.lineWidth = Math.max(2, s.thickness * 0.7 * inv);
-    ctx.beginPath();
-    ctx.arc(0, 0, s.radius + s.thickness * 0.3, curStart, curEnd, ccw);
-    ctx.stroke();
-
-    // Crisp pure-white hot blade core line
-    ctx.strokeStyle = s.coreColor;
-    ctx.lineWidth = Math.max(1.5, s.thickness * 0.32 * inv);
-    ctx.beginPath();
-    ctx.arc(0, 0, s.radius + s.thickness * 0.32, curStart, curEnd, ccw);
-    ctx.stroke();
-    ctx.restore();
-  }
-}

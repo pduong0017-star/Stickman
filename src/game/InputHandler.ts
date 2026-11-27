@@ -113,6 +113,12 @@ export class InputHandler {
     return false;
   }
 
+  /** Peek whether an action is buffered without consuming it. */
+  public hasBuffered(action: ActionKey): boolean {
+    const rem = this.buffers.get(action);
+    return rem !== undefined && rem > 0;
+  }
+
   public hasAnyGameplayInput(): boolean {
     return (
       this.held.has('left') ||

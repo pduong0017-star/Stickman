@@ -1,5 +1,5 @@
 import React from 'react';
-import type { AudioSettings, HudSnapshot, StyleRank } from '../game/types';
+import type { AudioSettings, BlessingId, HudSnapshot, StyleRank } from '../game/types';
 
 interface GameHUDProps {
   hud: HudSnapshot;
@@ -11,6 +11,7 @@ interface GameHUDProps {
   onRestart: () => void;
   onToggleTouch: () => void;
   onToggleFullscreen: () => void;
+  onSelectBlessing: (id: BlessingId) => void;
 }
 
 const RANK_COLORS: Record<StyleRank, string> = {
@@ -43,6 +44,7 @@ export const GameHUD: React.FC<GameHUDProps> = ({
   onRestart,
   onToggleTouch,
   onToggleFullscreen,
+  onSelectBlessing,
 }) => {
   if (hud.cutsceneActive) {
     return null;
@@ -56,6 +58,175 @@ export const GameHUD: React.FC<GameHUDProps> = ({
     : Math.max(0, Math.min(100, (hud.awakening / hud.maxAwakening) * 100));
 
   const comboScale = 1 + hud.comboPulse * 0.22;
+
+  if (hud.mode === 'solo1v1' && hud.solo1v1) {
+    const s = hud.solo1v1;
+    const botHpPct = Math.max(0, Math.min(100, (s.botHp / Math.max(1, s.botMaxHp)) * 100));
+    const botTrailPct = Math.max(botHpPct, Math.min(100, (s.botTrailHp / Math.max(1, s.botMaxHp)) * 100));
+    const botRagePct = Math.max(0, Math.min(100, (s.botEnergy / Math.max(1, s.botMaxEnergy)) * 100));
+    const roundDots = Array.from({ length: s.winsNeeded }, (_, idx) => idx);
+
+    return (
+      <div className="landscape-hud-top fixed inset-0 z-10 pointer-events-none flex flex-col justify-between safe-inset-hud sm:p-4">
+        {/* TOP SYMMETRIC 1V1 FIGHTING BAR */}
+        <div className="flex items-start justify-between gap-2 sm:gap-4 w-full max-w-5xl mx-auto">
+          {/* LEFT: PLAYER */}
+          <div className="flex-1 flex flex-col gap-1 min-w-0">
+            <div className="flex items-center justify-between gap-1.5 hud-text-shadow">
+              <div className="flex items-center gap-1.5 min-w-0">
+                <span
+                  className="font-display italic font-black text-sm sm:text-lg tracking-wider truncate"
+                  style={{ color: hud.characterAccent }}
+                >
+                  {hud.characterName}
+                </span>
+                <span className="text-[9px] sm:text-[10px] font-bold text-slate-400">P1</span>
+              </div>
+              <div className="flex items-center gap-1">
+                {roundDots.map((idx) => (
+                  <span
+                    key={`p1-dot-${idx}`}
+                    className="w-2.5 h-2.5 sm:w-3 sm:h-3 rounded-full border"
+                    style={{
+                      borderColor: hud.characterAccent,
+                      backgroundColor: idx < s.playerWins ? hud.characterAccent : 'rgba(15,23,42,0.8)',
+                      boxShadow: idx < s.playerWins ? `0 0 8px ${hud.characterAccent}` : 'none',
+                    }}
+                  />
+                ))}
+              </div>
+            </div>
+            {/* Player HP Bar */}
+            <div className="relative h-3 sm:h-4 w-full bg-[#0e121c] border border-slate-600/90 clip-slant-left overflow-hidden">
+              <div
+                className="absolute inset-y-0 left-0 bg-amber-400/80 transition-none"
+                style={{ width: `${trailPct}%` }}
+              />
+              <div
+                className="absolute inset-y-0 left-0"
+                style={{
+                  width: `${hpPct}%`,
+                  backgroundColor: hpPct <= 30 ? '#ef4444' : hud.characterAccent,
+                }}
+              />
+            </div>
+            {/* Player Rage Bar */}
+            <div className="flex items-center gap-1.5">
+              <div className="relative h-1.5 sm:h-2 flex-1 bg-[#0e121c] border border-slate-700/90 overflow-hidden">
+                <div
+                  className="absolute inset-y-0 left-0 bg-gradient-to-r from-red-600 to-amber-400"
+                  style={{ width: `${ragePct}%` }}
+                />
+              </div>
+              <span className="font-mono-num text-[9px] sm:text-[10px] text-amber-300 hud-text-shadow">
+                NỘ {hud.rage}%
+              </span>
+            </div>
+          </div>
+
+          {/* CENTER: ROUND TIMER */}
+          <div className="shrink-0 flex flex-col items-center px-2 sm:px-3 py-1 bg-[#0c101a]/90 border border-slate-700/80">
+            <span className="text-[8px] sm:text-[10px] font-bold tracking-widest text-slate-400 leading-none">
+              ROUND {s.roundNumber}
+            </span>
+            <span
+              className="font-mono-num font-black text-xl sm:text-3xl leading-tight"
+              style={{ color: s.roundTimer <= 15 ? '#ef4444' : '#f8fafc' }}
+            >
+              {String(s.roundTimer).padStart(2, '0')}
+            </span>
+          </div>
+
+          {/* RIGHT: BOT OPPONENT (SYMMETRIC) */}
+          <div className="flex-1 flex flex-col gap-1 min-w-0">
+            <div className="flex items-center justify-between gap-1.5 hud-text-shadow">
+              <div className="flex items-center gap-1">
+                {roundDots.map((idx) => (
+                  <span
+                    key={`bot-dot-${idx}`}
+                    className="w-2.5 h-2.5 sm:w-3 sm:h-3 rounded-full border"
+                    style={{
+                      borderColor: s.opponentAccent,
+                      backgroundColor: idx < s.botWins ? s.opponentAccent : 'rgba(15,23,42,0.8)',
+                      boxShadow: idx < s.botWins ? `0 0 8px ${s.opponentAccent}` : 'none',
+                    }}
+                  />
+                ))}
+              </div>
+              <div className="flex items-center gap-1.5 min-w-0">
+                <span className="text-[8px] sm:text-[10px] font-bold px-1 py-0.5 bg-slate-800/90 text-slate-300 border border-slate-700">
+                  {s.botArchetype}
+                </span>
+                <span
+                  className="font-display italic font-black text-sm sm:text-lg tracking-wider truncate"
+                  style={{ color: s.opponentAccent }}
+                >
+                  {s.opponentName}
+                </span>
+              </div>
+            </div>
+            {/* Bot HP Bar (fills right-to-left) */}
+            <div className="relative h-3 sm:h-4 w-full bg-[#0e121c] border border-slate-600/90 clip-slant-right overflow-hidden">
+              <div
+                className="absolute inset-y-0 right-0 bg-amber-400/80 transition-none"
+                style={{ width: `${botTrailPct}%` }}
+              />
+              <div
+                className="absolute inset-y-0 right-0"
+                style={{
+                  width: `${botHpPct}%`,
+                  backgroundColor: botHpPct <= 30 ? '#ef4444' : s.opponentAccent,
+                }}
+              />
+            </div>
+            {/* Bot Rage / Energy Bar */}
+            <div className="flex items-center gap-1.5">
+              <span className="font-mono-num text-[9px] sm:text-[10px] text-sky-300 hud-text-shadow">
+                {s.botEnergy}% NỘ
+              </span>
+              <div className="relative h-1.5 sm:h-2 flex-1 bg-[#0e121c] border border-slate-700/90 overflow-hidden">
+                <div
+                  className="absolute inset-y-0 right-0 bg-gradient-to-l from-sky-500 to-indigo-400"
+                  style={{ width: `${botRagePct}%` }}
+                />
+              </div>
+            </div>
+          </div>
+
+          {/* Utility Pause Button */}
+          <button
+            type="button"
+            onClick={onTogglePause}
+            aria-label="Tạm dừng"
+            className="pointer-events-auto shrink-0 px-2 py-1.5 bg-[#0e121c]/90 hover:bg-slate-800 border border-slate-700 text-xs font-bold text-slate-200 cursor-pointer"
+          >
+            ⏸
+          </button>
+        </div>
+
+        {/* CENTER ANNOUNCEMENT: ROUND X / FIGHT! / K.O. */}
+        {s.bannerText && (
+          <div className="fixed inset-0 flex items-center justify-center pointer-events-none">
+            <div
+              className="font-display italic font-black text-4xl sm:text-7xl tracking-widest uppercase px-6 py-2 hud-text-shadow"
+              style={{
+                color:
+                  s.bannerText === 'K.O.' || s.bannerText === 'FIGHT!'
+                    ? '#facc15'
+                    : '#f8fafc',
+                textShadow: '0 0 28px rgba(239,68,68,0.75), 0 4px 12px rgba(0,0,0,0.9)',
+              }}
+            >
+              {s.bannerText}
+            </div>
+          </div>
+        )}
+
+        {/* Bottom spacer for clean layout */}
+        <div className="h-4" />
+      </div>
+    );
+  }
 
   return (
     <div className="landscape-hud-top fixed inset-0 z-10 pointer-events-none flex flex-col justify-between safe-inset-hud sm:p-4">
@@ -172,6 +343,128 @@ export const GameHUD: React.FC<GameHUDProps> = ({
             </div>
           </div>
 
+          {/* Active Roguelite Blessing Seals */}
+          {hud.activeBlessings.length > 0 && (
+            <div className="flex items-center flex-wrap gap-1 pt-0.5">
+              {hud.activeBlessings.map((b) => (
+                <span
+                  key={b.id}
+                  title={`${b.name} (x${b.stacks})`}
+                  className="px-1.5 py-0.5 bg-[#0c101b]/90 border text-[9px] sm:text-[10px] font-bold leading-none flex items-center gap-0.5"
+                  style={{ borderColor: b.color, color: '#f8fafc' }}
+                >
+                  <span style={{ color: b.color }}>{b.badge}</span>
+                  {b.stacks > 1 && <span className="font-mono-num text-slate-300">x{b.stacks}</span>}
+                </span>
+              ))}
+            </div>
+          )}
+
+          {/* Domain Expansion Banner & Timer Badge (Ma Kính Hư Không / Tháp Đồng Hồ Cổ Đại / Xuân Phong Văn Miếu) */}
+          {hud.domainActive && (
+            <div
+              data-testid="hud-domain-badge"
+              className={
+                hud.domainKind === 'chrono'
+                  ? 'clip-chamfer px-2 py-1 bg-[#0c0a04]/95 border flex items-center justify-between gap-2 text-[9px] sm:text-[11px] font-display italic font-extrabold tracking-wider leading-none'
+                  : hud.domainKind === 'xuan_feng'
+                    ? 'clip-chamfer px-2 py-1 bg-[#071112]/95 border flex items-center justify-between gap-2 text-[9px] sm:text-[11px] font-display italic font-extrabold tracking-wider leading-none'
+                    : 'clip-chamfer px-2 py-1 bg-[#0a0414]/95 border flex items-center justify-between gap-2 text-[9px] sm:text-[11px] font-display italic font-extrabold tracking-wider leading-none'
+              }
+              style={{
+                borderColor:
+                  hud.domainKind === 'chrono'
+                    ? '#f59e0b'
+                    : hud.domainKind === 'xuan_feng'
+                      ? '#5eead4'
+                      : '#f43f5e',
+                boxShadow:
+                  hud.domainKind === 'chrono'
+                    ? '0 0 12px rgba(245, 158, 11, 0.42), inset 0 0 8px rgba(45, 212, 191, 0.22)'
+                    : hud.domainKind === 'xuan_feng'
+                      ? '0 0 12px rgba(94, 234, 212, 0.42), inset 0 0 8px rgba(253, 230, 138, 0.18)'
+                      : '0 0 12px rgba(244, 63, 94, 0.42), inset 0 0 8px rgba(56, 189, 248, 0.2)',
+              }}
+            >
+              <span
+                className={
+                  hud.domainKind === 'chrono'
+                    ? 'text-amber-300 truncate'
+                    : hud.domainKind === 'xuan_feng'
+                      ? 'text-[#f0fdfa] truncate'
+                      : 'text-rose-300 truncate'
+                }
+              >
+                {hud.domainKind === 'chrono' ? (
+                  'LÃNH ĐỊA: THÁP ĐỒNG HỒ CỔ ĐẠI'
+                ) : hud.domainKind === 'xuan_feng' ? (
+                  <>
+                    LÃNH ĐỊA: <span className="text-[#5eead4]">XUÂN PHONG VĂN MIẾU</span>
+                  </>
+                ) : (
+                  'LÃNH ĐỊA: MA KÍNH HƯ KHÔNG'
+                )}
+              </span>
+              {typeof hud.domainTimeLeft === 'number' && hud.domainTimeLeft > 0 && (
+                <span
+                  className={
+                    hud.domainKind === 'chrono'
+                      ? 'font-mono-num text-teal-300 shrink-0'
+                      : hud.domainKind === 'xuan_feng'
+                        ? 'font-mono-num text-[#fde68a] shrink-0'
+                        : 'font-mono-num text-sky-300 shrink-0'
+                  }
+                >
+                  {hud.domainTimeLeft.toFixed(1)}s
+                </span>
+              )}
+            </div>
+          )}
+
+          {/* Global Time Stop Active Badge */}
+          {hud.timeStopActive && (
+            <div
+              data-testid="hud-timestop-badge"
+              className="clip-chamfer px-2 py-1 bg-[#031314]/95 border flex items-center justify-between gap-2 text-[9px] sm:text-[11px] font-display italic font-extrabold tracking-wider leading-none"
+              style={{
+                borderColor: '#2dd4bf',
+                boxShadow:
+                  '0 0 12px rgba(45, 212, 191, 0.42), inset 0 0 8px rgba(245, 158, 11, 0.22)',
+              }}
+            >
+              <span className="text-teal-300 truncate">
+                NGƯNG ĐỌNG THỜI GIAN
+              </span>
+              {typeof hud.timeStopTimeLeft === 'number' && hud.timeStopTimeLeft > 0 && (
+                <span className="font-mono-num text-amber-300 shrink-0">
+                  {hud.timeStopTimeLeft.toFixed(1)}s
+                </span>
+              )}
+            </div>
+          )}
+
+          {/* Arena Soul Crystal Buff & Sub-Wave Bounty Objective */}
+          {(hud.arenaBuffText || hud.waveBountyText) && (
+            <div className="flex flex-col gap-0.5 pt-0.5">
+              {hud.arenaBuffText && (
+                <div className="px-1.5 py-0.5 bg-[#0d1424]/92 border border-sky-400/70 text-[9px] sm:text-[10px] font-bold tracking-wide text-sky-200 leading-tight truncate">
+                  {hud.arenaBuffText}
+                </div>
+              )}
+              {hud.waveBountyText && (
+                <div
+                  className="px-1.5 py-0.5 bg-[#121622]/92 border text-[9px] sm:text-[10px] font-bold tracking-wide leading-tight truncate"
+                  style={{
+                    borderColor: hud.waveBountyDone ? '#34d399' : '#facc15',
+                    color: hud.waveBountyDone ? '#6ee7b7' : '#fef08a',
+                  }}
+                >
+                  {hud.waveBountyText}
+                </div>
+              )}
+            </div>
+          )}
+
           {/* Quiet Wave & Tactical Hint Line (desktop only) */}
           <div className="landscape-compact-hidden text-[11px] text-slate-300/90 hud-text-shadow leading-snug">
             <span className="font-mono-num text-slate-400 mr-2">{hud.waveProgressText}</span>
@@ -179,15 +472,16 @@ export const GameHUD: React.FC<GameHUDProps> = ({
           </div>
         </div>
 
-        {/* TOP-CENTER: Boss HP Bar (centered cleanly so right-hand combat controls & Combo Rank never overlap!) */}
+        {/* TOP-CENTER: Boss HP Bar + Posture Gauge + Phase II */}
         {hud.boss ? (
-          <div className="landscape-hud-boss flex-1 max-w-[260px] sm:max-w-[340px] flex flex-col gap-0.5 items-center pt-0.5">
+          <div className="landscape-hud-boss flex-1 max-w-[260px] sm:max-w-[350px] flex flex-col gap-0.5 items-center pt-0.5">
             <div className="flex items-baseline justify-between w-full hud-text-shadow px-0.5">
               <span
                 className="text-[9px] sm:text-[11px] font-bold tracking-widest truncate"
                 style={{ color: hud.boss.accentColor }}
               >
                 {hud.boss.faction}
+                {hud.boss.phase === 2 ? ' · PHASE II' : ''}
               </span>
               <span className="font-display italic font-extrabold text-sm sm:text-xl text-white tracking-wide truncate ml-2">
                 {hud.boss.name}
@@ -206,8 +500,19 @@ export const GameHUD: React.FC<GameHUDProps> = ({
                 }}
               />
             </div>
+            <div className="relative h-1 sm:h-1.5 w-[92%] bg-[#090d16] border border-slate-800 overflow-hidden">
+              <div
+                className="absolute inset-y-0 left-0 transition-all duration-75"
+                style={{
+                  width: `${hud.boss.staggered ? 100 : Math.min(100, (hud.boss.posture / hud.boss.maxPosture) * 100)}%`,
+                  backgroundColor: hud.boss.staggered ? '#ef4444' : '#facc15',
+                }}
+              />
+            </div>
             <div className="landscape-compact-hidden text-[10px] font-mono-num text-slate-300 hud-text-shadow">
-              {hud.boss.title} · {hud.boss.hp}/{hud.boss.maxHp}
+              {hud.boss.staggered
+                ? '⚡ PHÁ GIÁP · SÁT THƯƠNG x1.32!'
+                : `${hud.boss.title} · ${hud.boss.hp}/${hud.boss.maxHp}`}
             </div>
           </div>
         ) : (
@@ -374,8 +679,87 @@ export const GameHUD: React.FC<GameHUDProps> = ({
         </div>
       )}
 
+      {/* 3-CARD ROGUELITE STAGE BLESSING DRAFT OVERLAY */}
+      {hud.blessingChoices && (
+        <div
+          className="fixed inset-0 z-30 pointer-events-auto flex items-center justify-center p-3 sm:p-6"
+          style={{ backgroundColor: 'rgba(6, 8, 15, 0.84)' }}
+          role="dialog"
+          aria-modal="true"
+          aria-label="Chọn Ấn Chú cường hoá qua màn"
+        >
+          <div className="w-full max-w-3xl flex flex-col items-center gap-3 sm:gap-5">
+            <div className="text-center">
+              <div className="text-[10px] sm:text-xs font-bold tracking-[0.26em] text-amber-300">
+                VƯỢT ẢI THÀNH CÔNG · CƯỜNG HOÁ CHIẾN BINH
+              </div>
+              <h2 className="font-display italic font-extrabold text-2xl sm:text-4xl text-white tracking-wider mt-0.5">
+                CHỌN 1 ẤN CHÚ SỨC MẠNH
+              </h2>
+            </div>
+
+            <div className="grid grid-cols-3 gap-2 sm:gap-4 w-full">
+              {hud.blessingChoices.map((card, idx) => (
+                <button
+                  key={card.id}
+                  type="button"
+                  onClick={() => onSelectBlessing(card.id)}
+                  className="clip-chamfer group relative bg-[#0f1422]/96 hover:bg-[#172036] border-2 p-2.5 sm:p-4 text-left flex flex-col justify-between gap-2 transition-transform duration-150 hover:-translate-y-1 active:scale-[0.98] cursor-pointer"
+                  style={{
+                    borderColor: card.color,
+                    boxShadow: `0 0 22px ${card.color}33`,
+                  }}
+                >
+                  <div className="flex flex-col gap-1.5">
+                    <div className="flex items-center justify-between gap-1">
+                      <span
+                        className="w-7 h-7 sm:w-9 sm:h-9 flex items-center justify-center border font-black text-base sm:text-xl"
+                        style={{
+                          borderColor: card.color,
+                          color: card.color,
+                          backgroundColor: 'rgba(9, 11, 16, 0.9)',
+                          fontFamily: 'var(--font-kanji)',
+                        }}
+                      >
+                        {card.badge}
+                      </span>
+                      <span className="font-mono-num text-[10px] sm:text-xs font-bold px-1.5 py-0.5 bg-slate-900 border border-slate-700 text-slate-300">
+                        [{idx + 1}] CẤP {card.stacks}
+                      </span>
+                    </div>
+                    <div>
+                      <div
+                        className="font-display italic font-extrabold text-sm sm:text-xl leading-tight tracking-wide text-white"
+                      >
+                        {card.name}
+                      </div>
+                      <div
+                        className="text-[9px] sm:text-[11px] font-bold tracking-wider uppercase"
+                        style={{ color: card.color }}
+                      >
+                        {card.subtitle}
+                      </div>
+                    </div>
+                    <p className="text-[10px] sm:text-xs text-slate-300 leading-snug">
+                      {card.desc}
+                    </p>
+                  </div>
+
+                  <div
+                    className="text-[10px] sm:text-xs font-display italic font-bold tracking-wider pt-1 border-t border-slate-800"
+                    style={{ color: card.color }}
+                  >
+                    KHẮC ẤN →
+                  </div>
+                </button>
+              ))}
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* AWAKENING PROMPT BANNER (When Fable shatters blade) */}
-      {hud.awakenPrompt && (
+      {hud.awakenPrompt && !hud.blessingChoices && (
         <div className="self-center px-4 py-1 bg-[#1a070b]/95 border border-red-500 text-center">
           <span className="font-display italic font-bold text-sm sm:text-xl tracking-wider text-red-200">
             BẤM [O] / TỈNH — KÍCH HOẠT {hud.characterSkills.awakenName}!
